@@ -61,8 +61,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
-        <footer className="mx-auto max-w-7xl px-4 py-8 text-center text-xs text-slate-400">
+        <main className="mx-auto max-w-7xl px-4 pt-6 pb-4">{children}</main>
+        <footer className="mx-auto max-w-7xl px-4 py-4 text-center text-xs text-slate-400">
           FloodGuard · ML Opsidian: Genesis · Flood-risk model + autonomous WhatsApp alerts
         </footer>
       </body>
