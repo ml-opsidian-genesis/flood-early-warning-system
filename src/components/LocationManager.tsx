@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
+import Pagination from "./Pagination";
 
 type AdminLocation = {
   id: string;
@@ -17,6 +18,8 @@ type AdminLocation = {
 };
 
 const EMPTY = { name: "", district: "", latitude: "", longitude: "" };
+const PAGE_SIZE = 15;
+const RISK_LEVELS = ["Low", "Moderate", "High", "Critical"];
 
 export default function LocationManager() {
   const [locations, setLocations] = useState<AdminLocation[]>([]);
@@ -25,6 +28,9 @@ export default function LocationManager() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [riskFilter, setRiskFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   const load = useCallback(() => {
     fetch("/api/admin/locations")
@@ -79,7 +85,6 @@ export default function LocationManager() {
     const res = await fetch(`/api/admin/locations?id=${id}`, { method: "DELETE" });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setNotice(null);
       setError(d.error ?? "Failed to delete");
       return;
     }
@@ -89,10 +94,30 @@ export default function LocationManager() {
   const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return locations.filter((l) => {
+      if (q && !l.name.toLowerCase().includes(q) && !l.district.toLowerCase().includes(q)) return false;
+      if (riskFilter === "Not scored") return l.riskLevel == null;
+      if (riskFilter && l.riskLevel !== riskFilter) return false;
+      return true;
+    });
+  }, [locations, search, riskFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function handleSearch(v: string) { setSearch(v); setPage(1); }
+  function handleRisk(v: string) { setRiskFilter(v); setPage(1); }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold tracking-tight">Monitored locations</h2>
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Monitored locations</h2>
+          <p className="text-sm text-slate-500">{locations.length} total</p>
+        </div>
         <button
           onClick={openModal}
           className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -104,7 +129,40 @@ export default function LocationManager() {
       {notice && <p className="text-sm text-green-700">{notice}</p>}
       {!showModal && error && <p className="text-sm text-red-600">{error}</p>}
 
-      {/* Risk values table */}
+      {/* Search & filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={search}
+          onChange={(e) => handleSearch(e.target.value)}
+          placeholder="Search name or district…"
+          className="min-w-[200px] rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500"
+        />
+        <select
+          value={riskFilter}
+          onChange={(e) => handleRisk(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500"
+        >
+          <option value="">All risk levels</option>
+          {RISK_LEVELS.map((l) => (
+            <option key={l} value={l}>{l}</option>
+          ))}
+          <option value="Not scored">Not scored</option>
+        </select>
+        {(search || riskFilter) && (
+          <button
+            onClick={() => { setSearch(""); setRiskFilter(""); setPage(1); }}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50"
+          >
+            Clear
+          </button>
+        )}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-slate-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
+          <Pagination page={safePage} totalPages={totalPages} onPage={setPage} />
+        </div>
+      </div>
+
+      {/* Locations table */}
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
@@ -121,14 +179,14 @@ export default function LocationManager() {
             </tr>
           </thead>
           <tbody>
-            {locations.length === 0 ? (
+            {pageRows.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
-                  No locations yet.
+                  {locations.length === 0 ? "No locations yet." : "No locations match the filters."}
                 </td>
               </tr>
             ) : (
-              locations.map((l) => (
+              pageRows.map((l) => (
                 <tr key={l.id} className="border-t border-slate-100">
                   <td className="px-4 py-2 font-medium">{l.name}</td>
                   <td className="text-slate-500">{l.district}</td>

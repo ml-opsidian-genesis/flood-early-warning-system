@@ -62,11 +62,13 @@ export default function Landing() {
     });
   }, []);
 
+  const setSelected = useCallback((ids: string[]) => setSelectedIds(new Set(ids)), []);
+
   const scored = locations.filter((l) => l.score != null).length;
   const latestDate = locations.find((l) => l.scoredFor)?.scoredFor;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-1">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">Sri Lanka Flood-Risk Map</h1>
         <p className="text-sm text-slate-500">
@@ -80,7 +82,7 @@ export default function Landing() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3 items-start">
         <div className="card flex flex-col gap-3 p-3 lg:col-span-2">
           <div className="flex items-center justify-end">
             <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs">
@@ -97,7 +99,7 @@ export default function Landing() {
               ))}
             </div>
           </div>
-          <div className="h-[60vh] min-h-[420px]">
+          <div className="h-[50vh] min-h-[420px]">
             <FloodMap
               locations={locations}
               selectedIds={selectedIds}
@@ -110,7 +112,12 @@ export default function Landing() {
           </div>
           <RiskLegend thresholds={thresholds} />
         </div>
-        <SubscribePanel locations={locations} selectedIds={selectedIds} onToggle={toggle} />
+        <SubscribePanel
+          locations={locations}
+          selectedIds={selectedIds}
+          onToggle={toggle}
+          onSetSelected={setSelected}
+        />
       </div>
     </div>
   );
