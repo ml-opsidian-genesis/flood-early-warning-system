@@ -39,8 +39,28 @@ model Location {
 
   scores        RiskScore[]
   subscriptions Subscription[]
+  feedbacks     Feedback[]
 
   @@unique([name, district])
+}
+
+/// User feedback on a predicted score for one pipeline generation (scoredFor).
+/// Stored by location + scoredFor (not a RiskScore FK) so it survives re-runs;
+/// `score` snapshots the prediction the user was rating. Training-data source.
+model Feedback {
+  id            String   @id @default(cuid())
+  locationId    String
+  location      Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  scoredFor     DateTime // the generation this feedback applies to
+  score         Float // snapshot of the predicted score at feedback time
+  actualFlooded Boolean? // ground truth: did flooding actually occur?
+  accuracy      String? // "accurate" | "overestimated" | "underestimated"
+  comment       String?
+  reporter      String?
+  createdAt     DateTime @default(now())
+
+  @@index([scoredFor])
+  @@index([locationId, scoredFor])
 }
 
 /// One daily flood-risk score for a location (the morning pipeline output).
