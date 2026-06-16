@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { LocationScore } from "./types";
-import { riskColor } from "@/lib/risk";
+import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
 
 type Props = {
   locations: LocationScore[];
@@ -103,7 +103,7 @@ export default function SubscribePanel({ locations, selectedIds, onToggle }: Pro
               >
                 <span
                   className="inline-block h-2 w-2 rounded-full"
-                  style={{ backgroundColor: l.score != null ? riskColor(l.score) : "#94a3b8" }}
+                  style={{ backgroundColor: l.riskLevel ? RISK_COLORS[l.riskLevel as RiskLevel] : "#94a3b8" }}
                 />
                 {l.name}
                 {step === "select" && <span className="text-slate-400">×</span>}

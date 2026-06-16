@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { scoreLocations } from "@/lib/scoring";
-import { alertThreshold, riskLevel } from "@/lib/risk";
+import { riskLevel } from "@/lib/risk";
+import { getThresholds } from "@/lib/settings";
 import { sendWhatsApp } from "@/lib/twilio";
 
 export type PipelineSummary = {
@@ -27,7 +28,8 @@ function alertMessage(name: string, district: string, level: string, score: numb
 export async function runScoringPipeline(): Promise<PipelineSummary> {
   const dateISO = new Date().toISOString().slice(0, 10);
   const scoredFor = new Date(`${dateISO}T00:00:00.000Z`);
-  const threshold = alertThreshold();
+  const thresholds = await getThresholds();
+  const threshold = thresholds.alertThreshold;
 
   const locations = await prisma.location.findMany();
   if (locations.length === 0) {
@@ -64,7 +66,7 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
     data: batch.results.map((r) => ({
       locationId: r.id,
       score: r.flood_risk_score,
-      riskLevel: r.risk_level,
+      riskLevel: riskLevel(r.flood_risk_score, thresholds),
       weatherRegime: r.weather_regime,
       features: r.features as object,
       scoredFor,
@@ -82,7 +84,7 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
     });
 
     for (const sub of subs) {
-      const level = riskLevel(loc.flood_risk_score);
+      const level = riskLevel(loc.flood_risk_score, thresholds);
       const result = await sendWhatsApp(
         sub.subscriber.phone,
         alertMessage(loc.name, loc.district, level, loc.flood_risk_score),
@@ -125,8 +127,8 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
     highRisk: highRisk.map((r) => ({
       name: r.name,
       district: r.district,
-      score: Number(r.flood_risk_score.toFixed(3)),
-      level: r.risk_level,
+      score: Number(r.flood_risk_score.toFixed(4)),
+      level: riskLevel(r.flood_risk_score, thresholds),
     })),
   };
 }

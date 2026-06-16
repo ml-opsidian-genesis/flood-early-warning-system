@@ -112,7 +112,8 @@ export default function LocationManager() {
               <th className="px-4 py-3">Location</th>
               <th>District</th>
               <th>Coordinates</th>
-              <th>Risk value</th>
+              <th>Score</th>
+              <th>Level</th>
               <th>Regime</th>
               <th>Subs</th>
               <th>Scored</th>
@@ -122,7 +123,7 @@ export default function LocationManager() {
           <tbody>
             {locations.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                   No locations yet.
                 </td>
               </tr>
@@ -134,13 +135,16 @@ export default function LocationManager() {
                   <td className="tabular-nums text-slate-500">
                     {l.latitude.toFixed(3)}, {l.longitude.toFixed(3)}
                   </td>
+                  <td className="tabular-nums font-medium">
+                    {l.score != null ? l.score.toFixed(4) : <span className="text-slate-400">—</span>}
+                  </td>
                   <td>
                     {l.score != null ? (
                       <span
                         className="rounded px-1.5 py-0.5 text-xs font-medium text-white"
                         style={{ backgroundColor: RISK_COLORS[l.riskLevel as RiskLevel] ?? "#64748b" }}
                       >
-                        {l.riskLevel} {(l.score * 100).toFixed(0)}%
+                        {l.riskLevel}
                       </span>
                     ) : (
                       <span className="text-xs text-slate-400">not scored</span>

@@ -18,6 +18,16 @@ model Admin {
   createdAt    DateTime @default(now())
 }
 
+/// Single-row table holding admin-configurable risk + alert thresholds.
+model Settings {
+  id             String   @id @default("singleton")
+  moderateMin    Float    @default(0.25)
+  highMin        Float    @default(0.5)
+  criticalMin    Float    @default(0.75)
+  alertThreshold Float    @default(0.5)
+  updatedAt      DateTime @updatedAt
+}
+
 /// A monitored place (from the fixed lat/long dataset users subscribe to).
 model Location {
   id        String   @id @default(cuid())

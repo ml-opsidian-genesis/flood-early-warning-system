@@ -3,6 +3,8 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { riskLevel } from "@/lib/risk";
+import { getThresholds } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,17 +28,21 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const locations = await prisma.location.findMany({
-    orderBy: [{ district: "asc" }, { name: "asc" }],
-    include: {
-      scores: { orderBy: { scoredFor: "desc" }, take: 1 },
-      _count: { select: { subscriptions: true } },
-    },
-  });
+  const [locations, thresholds] = await Promise.all([
+    prisma.location.findMany({
+      orderBy: [{ district: "asc" }, { name: "asc" }],
+      include: {
+        scores: { orderBy: { scoredFor: "desc" }, take: 1 },
+        _count: { select: { subscriptions: true } },
+      },
+    }),
+    getThresholds(),
+  ]);
 
   return NextResponse.json({
     locations: locations.map((l) => {
       const latest = l.scores[0];
+      const score = latest?.score ?? null;
       return {
         id: l.id,
         name: l.name,
@@ -44,8 +50,8 @@ export async function GET() {
         latitude: l.latitude,
         longitude: l.longitude,
         subscribers: l._count.subscriptions,
-        score: latest?.score ?? null,
-        riskLevel: latest?.riskLevel ?? null,
+        score,
+        riskLevel: score != null ? riskLevel(score, thresholds) : null,
         weatherRegime: latest?.weatherRegime ?? null,
         scoredFor: latest?.scoredFor ?? null,
       };

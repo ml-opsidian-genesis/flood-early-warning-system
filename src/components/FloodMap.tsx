@@ -2,7 +2,7 @@
 
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { riskColor } from "@/lib/risk";
+import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
 import type { LocationScore } from "./types";
 
 type Props = {
@@ -23,7 +23,8 @@ export default function FloodMap({ locations, selectedIds, onToggle }: Props) {
       />
       {locations.map((loc) => {
         const hasScore = typeof loc.score === "number";
-        const color = hasScore ? riskColor(loc.score as number) : "#94a3b8";
+        const color =
+          hasScore && loc.riskLevel ? RISK_COLORS[loc.riskLevel as RiskLevel] : "#94a3b8";
         const selected = selectedIds.has(loc.id);
         return (
           <CircleMarker

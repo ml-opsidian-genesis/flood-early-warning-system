@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import SubscribePanel from "./SubscribePanel";
 import RiskLegend from "./RiskLegend";
 import type { LocationScore } from "./types";
+import type { Thresholds } from "@/lib/risk";
 
 const FloodMap = dynamic(() => import("./FloodMap"), {
   ssr: false,
@@ -17,13 +18,17 @@ const FloodMap = dynamic(() => import("./FloodMap"), {
 
 export default function Landing() {
   const [locations, setLocations] = useState<LocationScore[]>([]);
+  const [thresholds, setThresholds] = useState<Thresholds | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/locations")
       .then((r) => r.json())
-      .then((d) => setLocations(d.locations ?? []))
+      .then((d) => {
+        setLocations(d.locations ?? []);
+        setThresholds(d.thresholds);
+      })
       .catch(() => setLocations([]))
       .finally(() => setLoaded(true));
   }, []);
@@ -59,7 +64,7 @@ export default function Landing() {
           <div className="h-[60vh] min-h-[420px]">
             <FloodMap locations={locations} selectedIds={selectedIds} onToggle={toggle} />
           </div>
-          <RiskLegend />
+          <RiskLegend thresholds={thresholds} />
         </div>
         <SubscribePanel locations={locations} selectedIds={selectedIds} onToggle={toggle} />
       </div>
