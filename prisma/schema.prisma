@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// An administrator account (role-based access to the ops dashboard).
+/// End users never get accounts — they only subscribe via phone + OTP.
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("admin") // "admin" | "superadmin"
+  createdAt    DateTime @default(now())
+}
+
+/// A monitored place (from the fixed lat/long dataset users subscribe to).
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  district  String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+
+  scores        RiskScore[]
+  subscriptions Subscription[]
+
+  @@unique([name, district])
+}
+
+/// One daily flood-risk score for a location (the morning pipeline output).
+model RiskScore {
+  id            String   @id @default(cuid())
+  locationId    String
+  location      Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  score         Float
+  riskLevel     String
+  weatherRegime String?
+  features      Json?
+  scoredFor     DateTime // the date the score applies to
+  createdAt     DateTime @default(now())
+
+  @@index([locationId, scoredFor])
+  @@index([scoredFor])
+}
+
+/// A phone number that has completed OTP verification.
+model Subscriber {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  subscriptions Subscription[]
+  alerts        Alert[]
+}
+
+/// Links a verified subscriber to a location they want alerts for.
+model Subscription {
+  id           String     @id @default(cuid())
+  subscriberId String
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  locationId   String
+  location     Location   @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([subscriberId, locationId])
+}
+
+/// Audit log of every alert the pipeline attempted to send (monitoring).
+model Alert {
+  id           String   @id @default(cuid())
+  subscriberId String?
+  subscriber   Subscriber? @relation(fields: [subscriberId], references: [id], onDelete: SetNull)
+  phone        String
+  locationName String
+  district     String
+  score        Float
+  riskLevel    String
+  channel      String   @default("whatsapp")
+  status       String   // sent | failed | simulated
+  detail       String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// One row per pipeline execution (monitoring / observability).
+model ScoringRun {
+  id            String   @id @default(cuid())
+  scoredFor     DateTime
+  locationCount Int
+  alertsSent    Int      @default(0)
+  highRiskCount Int      @default(0)
+  modelVersion  String?
+  status        String   // success | failed
+  detail        String?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+}
