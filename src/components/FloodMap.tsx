@@ -16,6 +16,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
 import { RISK_COLORS, DEFAULT_THRESHOLDS, type RiskLevel, type Thresholds } from "@/lib/risk";
 import type { LocationScore } from "./types";
+import FeedbackForm from "./FeedbackForm";
 
 export type DistrictAgg = {
   district: string;
@@ -186,6 +187,7 @@ export default function FloodMap({
                 >
                   {selected ? "Remove from selection" : "Select for alerts"}
                 </button>
+                <FeedbackForm location={loc} />
               </div>
             </Popup>
           </CircleMarker>

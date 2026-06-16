@@ -44,6 +44,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/alerts" className="hover:text-blue-600">
                     Alerts
                   </Link>
+                  <Link href="/generations" className="hover:text-blue-600">
+                    Generations
+                  </Link>
                   <Link href="/settings" className="hover:text-blue-600">
                     Settings
                   </Link>
