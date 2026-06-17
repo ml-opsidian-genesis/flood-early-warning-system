@@ -36,9 +36,10 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
     throw new Error("No locations seeded. Run `npm run db:seed`.");
   }
 
-  let batch;
+  let batch: Awaited<ReturnType<typeof scoreLocations>>["batch"];
+  let weatherRegimes: Awaited<ReturnType<typeof scoreLocations>>["weatherRegimes"];
   try {
-    batch = await scoreLocations(
+    const result = await scoreLocations(
       locations.map((l) => ({
         id: l.id,
         name: l.name,
@@ -48,6 +49,8 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
       })),
       dateISO,
     );
+    batch = result.batch;
+    weatherRegimes = result.weatherRegimes;
   } catch (e) {
     await prisma.scoringRun.create({
       data: {
@@ -67,7 +70,7 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
       locationId: r.id,
       score: r.flood_risk_score,
       riskLevel: riskLevel(r.flood_risk_score, thresholds),
-      weatherRegime: r.weather_regime,
+      weatherRegime: weatherRegimes.get(r.id) ?? null,
       features: r.features as object,
       scoredFor,
     })),
@@ -85,9 +88,10 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
 
     for (const sub of subs) {
       const level = riskLevel(loc.flood_risk_score, thresholds);
+      const district = loc.district ?? "";
       const result = await sendWhatsApp(
         sub.subscriber.phone,
-        alertMessage(loc.name, loc.district, level, loc.flood_risk_score),
+        alertMessage(loc.name, district, level, loc.flood_risk_score),
       );
       if (result.status === "sent" || result.status === "simulated") alertsSent += 1;
 
@@ -96,7 +100,7 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
           subscriberId: sub.subscriberId,
           phone: sub.subscriber.phone,
           locationName: loc.name,
-          district: loc.district,
+          district,
           score: loc.flood_risk_score,
           riskLevel: level,
           status: result.status,
@@ -126,7 +130,7 @@ export async function runScoringPipeline(): Promise<PipelineSummary> {
     alertsSent,
     highRisk: highRisk.map((r) => ({
       name: r.name,
-      district: r.district,
+      district: r.district ?? "",
       score: Number(r.flood_risk_score.toFixed(4)),
       level: riskLevel(r.flood_risk_score, thresholds),
     })),
