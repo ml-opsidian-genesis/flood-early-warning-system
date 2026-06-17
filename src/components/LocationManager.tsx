@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
+import { Skeleton, Spin } from "antd";
 import Pagination from "./Pagination";
 
 type AdminLocation = {
@@ -28,15 +29,18 @@ export default function LocationManager() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const load = useCallback(() => {
+    setLoading(true);
     fetch("/api/admin/locations")
       .then((r) => r.json())
       .then((d) => setLocations(d.locations ?? []))
-      .catch(() => setLocations([]));
+      .catch(() => setLocations([]))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(load, [load]);
@@ -179,7 +183,13 @@ export default function LocationManager() {
             </tr>
           </thead>
           <tbody>
-            {pageRows.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="px-4 py-6 text-center">
+                  <Spin size="large" />
+                </td>
+              </tr>
+            ) : pageRows.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                   {locations.length === 0 ? "No locations yet." : "No locations match the filters."}

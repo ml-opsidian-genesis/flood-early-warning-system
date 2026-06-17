@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Pagination from "./Pagination";
+import { Skeleton, Spin } from "antd";
 
 type Sub = {
   id: string;
@@ -22,16 +23,19 @@ export default function SubscribersClient() {
   const [editing, setEditing] = useState<Sub | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const load = useCallback(() => {
+    setLoading(true);
     fetch("/api/admin/subscribers")
       .then((r) => r.json())
       .then((d) => setSubscribers(d.subscribers ?? []))
-      .catch(() => setSubscribers([]));
+      .catch(() => setSubscribers([]))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -75,6 +79,15 @@ export default function SubscribersClient() {
     setError(null);
   }
 
+  function Card({ label, value }: { label: string; value: ReactNode }) {
+    return (
+      <div className="card p-4">
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
+        <div className="mt-1 text-2xl font-bold">{value}</div>
+      </div>
+    );
+  }
+
   async function saveEdit() {
     if (!editing) return;
     setBusy(true);
@@ -116,11 +129,19 @@ export default function SubscribersClient() {
         <p className="text-sm text-slate-500">Manage who receives alerts and the locations they follow.</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Subscribers" value={stats.total} />
-        <Stat label="Verified" value={stats.verified} />
-        <Stat label="Subscriptions" value={stats.subs} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-3 gap-3">
+          <Card label="Subscribers" value={<Skeleton active paragraph={false} />} />
+          <Card label="Verified" value={<Skeleton active paragraph={false} />} />
+          <Card label="Subscriptions" value={<Skeleton active paragraph={false} />} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <Stat label="Subscribers" value={stats.total} />
+          <Stat label="Verified" value={stats.verified} />
+          <Stat label="Subscriptions" value={stats.subs} />
+        </div>
+      )}
 
       {/* Search & filters */}
       <div className="flex flex-wrap items-center gap-2">
@@ -165,7 +186,13 @@ export default function SubscribersClient() {
             </tr>
           </thead>
           <tbody>
-            {pageRows.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center">
+                  <Spin size="large" />
+                </td>
+              </tr>
+            ) : pageRows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
                   {subscribers.length === 0 ? "No subscribers yet." : "No subscribers match the filters."}
@@ -177,9 +204,8 @@ export default function SubscribersClient() {
                   <td className="px-4 py-3 font-medium">{s.phone}</td>
                   <td>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                        s.verified ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
-                      }`}
+                      className={`rounded px-1.5 py-0.5 text-xs font-medium ${s.verified ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
+                        }`}
                     >
                       {s.verified ? "verified" : "unverified"}
                     </span>
