@@ -1,8 +1,10 @@
 "use client";
 
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { Skeleton } from "antd";
+import LoadingSpinner from "./LoadingSpinner";
+import CardSkeleton from "./customComponents/CardSkeleton";
 import Pagination from "./Pagination";
-import { Skeleton, Spin } from "antd";
 
 type Sub = {
   id: string;
@@ -131,9 +133,9 @@ export default function SubscribersClient() {
 
       {loading ? (
         <div className="grid grid-cols-3 gap-3">
-          <Card label="Subscribers" value={<Skeleton active paragraph={false} />} />
-          <Card label="Verified" value={<Skeleton active paragraph={false} />} />
-          <Card label="Subscriptions" value={<Skeleton active paragraph={false} />} />
+          <CardSkeleton label="Subscribers" />
+          <CardSkeleton label="Verified" />
+          <CardSkeleton label="Subscriptions" />
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
@@ -189,7 +191,7 @@ export default function SubscribersClient() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center">
-                  <Spin size="large" />
+                  <LoadingSpinner size="large" />
                 </td>
               </tr>
             ) : pageRows.length === 0 ? (
