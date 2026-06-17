@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
 import Pagination from "./Pagination";
+import LoadingSpinner from "./LoadingSpinner";
+import CardSkeleton from "./customComponents/CardSkeleton";
 
 type AlertRow = {
   id: string;
@@ -30,12 +32,14 @@ export default function AlertsClient() {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const load = useCallback(() => {
+    setLoading(true);
     fetch("/api/admin/alerts")
       .then((r) => r.json())
       .then((d) => {
@@ -43,7 +47,8 @@ export default function AlertsClient() {
         setCounts(d.counts ?? {});
         setTotal(d.total ?? 0);
       })
-      .catch(() => {});
+      .catch(() => { })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(load, [load]);
@@ -75,12 +80,21 @@ export default function AlertsClient() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Total attempts" value={total} />
-        <Stat label="Sent" value={counts.sent ?? 0} />
-        <Stat label="Failed" value={counts.failed ?? 0} />
-        <Stat label="Simulated" value={counts.simulated ?? 0} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <CardSkeleton label="Total attempts" />
+          <CardSkeleton label="Sent" />
+          <CardSkeleton label="Failed" />
+          <CardSkeleton label="Simulated" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Total attempts" value={total} />
+          <Stat label="Sent" value={counts.sent ?? 0} />
+          <Stat label="Failed" value={counts.failed ?? 0} />
+          <Stat label="Simulated" value={counts.simulated ?? 0} />
+        </div>
+      )}
 
       {/* Search & filters */}
       <div className="flex flex-wrap items-center gap-2">
@@ -138,7 +152,14 @@ export default function AlertsClient() {
             </tr>
           </thead>
           <tbody>
-            {pageRows.length === 0 ? (
+
+            {loading && (<tr>
+              <td colSpan={5} className="px-4 py-6 text-center">
+                <LoadingSpinner size="large" />
+              </td>
+            </tr>)}
+
+            {pageRows.length === 0 && !loading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
                   {alerts.length === 0

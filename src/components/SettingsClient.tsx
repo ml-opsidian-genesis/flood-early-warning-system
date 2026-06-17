@@ -413,11 +413,10 @@ function AdminsSection({ currentId }: { currentId: string }) {
                     </td>
                     <td>
                       <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                          a.role === "superadmin"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${a.role === "superadmin"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-slate-100 text-slate-700"
+                          }`}
                       >
                         {a.role}
                       </span>
