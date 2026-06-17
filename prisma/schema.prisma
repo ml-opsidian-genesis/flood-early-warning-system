@@ -120,6 +120,17 @@ model Alert {
   @@index([createdAt])
 }
 
+/// Short-lived OTP codes for WhatsApp subscriber verification (10-min TTL).
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
 /// One row per pipeline execution (monitoring / observability).
 model ScoringRun {
   id            String   @id @default(cuid())
