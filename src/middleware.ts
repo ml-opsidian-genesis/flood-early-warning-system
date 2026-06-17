@@ -12,8 +12,10 @@ export async function middleware(req: NextRequest) {
 
   const { pathname, search } = req.nextUrl;
 
+  console.log("### endpoint called", pathname, search)
   // API routes get a 401; pages redirect to the login screen.
-  if (pathname.startsWith("/api/")) {
+  const isTwilio = pathname.startsWith("/api/twilio");
+  if (pathname.startsWith("/api/") && !isTwilio) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
