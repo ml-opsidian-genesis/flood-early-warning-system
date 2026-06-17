@@ -19,6 +19,9 @@
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
+    "antd": "^6.4.4",
+    "dotenv": "^17.4.2",
+    "env": "^0.0.2",
     "jose": "^5.9.6",
     "leaflet": "1.9.4",
     "leaflet.heat": "^0.2.0",
