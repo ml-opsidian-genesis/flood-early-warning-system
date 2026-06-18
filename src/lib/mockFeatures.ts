@@ -1,8 +1,13 @@
 // Deterministic mock weather/feature generation, mirroring the deleted
 // Python src/mock_features.py from the ml-model repo. Lives on the system
 // side: the model API should only score fully-formed feature vectors, not
-// simulate its own inputs. Swapping this for a real weather API later is a
-// one-function change here, touching zero model code.
+// simulate its own inputs.
+//
+// Rainfall can be swapped for real data from Open-Meteo (see src/lib/weather.ts)
+// -- buildFeaturesFromRainfall() takes a real rainfall reading and derives the
+// rest (regime, NDWI, inundation, flood flags) from it exactly the same way
+// mockFeatures() does from a simulated one, so callers fall back seamlessly
+// when the live fetch is unavailable.
 
 function xmur3(str: string): () => number {
   let h = 1779033703 ^ str.length;
@@ -63,6 +68,16 @@ const ELECTRICITY = ["Yes", "Mixed", "No"] as const;
 const ROAD = ["Good (paved)", "Fair", "Poor (unpaved)", "No road access"] as const;
 const REGIMES = ["dry", "normal", "wet", "storm"] as const;
 export type WeatherRegime = (typeof REGIMES)[number];
+
+/** Classify a real or simulated 7-day rainfall total into the same regime
+ *  bands used to generate mock rainfall, so real data and mock data produce
+ *  consistent downstream behavior (NDWI, inundation, flood flags). */
+function regimeFromRainfall(rainfall: number): WeatherRegime {
+  if (rainfall < 40) return "dry";
+  if (rainfall < 95) return "normal";
+  if (rainfall < 165) return "wet";
+  return "storm";
+}
 
 type LocationProfile = {
   district: string;
@@ -147,23 +162,18 @@ export type MockFeaturesResult = {
   weatherRegime: WeatherRegime;
 };
 
-/** Deterministic per-(locationId, date) mock weather + static profile. */
-export function mockFeatures(
-  locationId: string,
-  district: string,
+/** Shared core: given a (real or simulated) rainfall reading, derive every
+ *  rainfall-dependent field the same way regardless of where the rainfall
+ *  came from. The seeded `rng` only drives the parts we have no live source
+ *  for (NDVI/inundation noise) -- it never overrides the rainfall itself. */
+function buildFeatures(
+  prof: LocationProfile,
+  rng: () => number,
+  rainfall: number,
+  monthlyRainfall: number,
   dateISO: string,
 ): MockFeaturesResult {
-  const prof = locationProfile(locationId, district);
-  const rng = seededRng("daily", locationId, dateISO);
-
-  const regime = weightedChoice(rng, REGIMES, [0.22, 0.4, 0.23, 0.15]);
-  const rainfall =
-    regime === "dry" ? uniform(rng, 5, 40)
-    : regime === "normal" ? uniform(rng, 40, 95)
-    : regime === "wet" ? uniform(rng, 95, 165)
-    : uniform(rng, 165, 320);
-
-  const monthlyRainfall = rainfall * uniform(rng, 2.5, 4.0);
+  const regime = regimeFromRainfall(rainfall);
   const ndwi = Math.max(-1, Math.min(1, -0.2 + rainfall / 320 + uniform(rng, -0.15, 0.15)));
   const ndvi = Math.max(-1, Math.min(1, prof.ndvi_base + uniform(rng, -0.1, 0.1)));
   const inundation = Math.max(0, rainfall * uniform(rng, 60, 220) * (1 / (prof.elevation_m + 5)));
@@ -199,4 +209,39 @@ export function mockFeatures(
   };
 
   return { features, weatherRegime: regime };
+}
+
+/** Deterministic per-(locationId, date) mock weather + static profile. */
+export function mockFeatures(
+  locationId: string,
+  district: string,
+  dateISO: string,
+): MockFeaturesResult {
+  const prof = locationProfile(locationId, district);
+  const rng = seededRng("daily", locationId, dateISO);
+
+  const regime = weightedChoice(rng, REGIMES, [0.22, 0.4, 0.23, 0.15]);
+  const rainfall =
+    regime === "dry" ? uniform(rng, 5, 40)
+    : regime === "normal" ? uniform(rng, 40, 95)
+    : regime === "wet" ? uniform(rng, 95, 165)
+    : uniform(rng, 165, 320);
+  const monthlyRainfall = rainfall * uniform(rng, 2.5, 4.0);
+
+  return buildFeatures(prof, rng, rainfall, monthlyRainfall, dateISO);
+}
+
+/** Same as mockFeatures(), but using a real rainfall reading (e.g. from
+ *  Open-Meteo) instead of a simulated one -- everything else (terrain,
+ *  demographics, NDVI/inundation noise) stays the same deterministic mock. */
+export function buildFeaturesFromRainfall(
+  locationId: string,
+  district: string,
+  dateISO: string,
+  rainfall7d: number,
+  monthlyRainfall: number,
+): MockFeaturesResult {
+  const prof = locationProfile(locationId, district);
+  const rng = seededRng("daily", locationId, dateISO);
+  return buildFeatures(prof, rng, rainfall7d, monthlyRainfall, dateISO);
 }
