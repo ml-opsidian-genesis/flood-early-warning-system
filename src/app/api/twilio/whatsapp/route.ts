@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { PrismaClient } from "@prisma/client";
+import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo } from "./classifier";
 
 /**
  * Twilio webhook for incoming WhatsApp messages.
@@ -13,8 +15,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 //   return Response.json({ ok: true });
 // }
 
+const prisma = new PrismaClient();
+
 export async function POST(req: NextRequest) {
   console.log('Incoming request method:', req.method);
+
+  // Twilio credentials (needed early for error handling)
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM; // e.g. "whatsapp:+14155238886"
 
   // Twilio sends form‑encoded data, not JSON
   const formData = await req.formData();
@@ -36,31 +45,85 @@ export async function POST(req: NextRequest) {
         contents: [{ role: "user", parts: [{ text: `You are a helpful assistant for a flood‑early‑warning system. Reply briefly to the user message: "${message}"` }] }],
       });
       const response = await result.response?.text();
-      return response?.trim() || "We have received your message, thanks!";
+      const text = (response?.trim()) ?? "We have received your message, thanks!";
+      // Format pointwise for WhatsApp readability
+      return formatPointwise(text);
     } catch (e) {
       console.error('Gemini reply generation failed:', e);
-      return "We have received your message, thanks!";
+      return DEFAULT_ERROR_MESSAGE;
     }
   }
 
-  const generatedReply = await generateGeminiReply(body);
+  // Classify the incoming message to determine intent
+  let classification: ClassifiedMessage;
+  try {
+    classification = await classifyMessage(body);
+  } catch (e) {
+    console.error('Classification failed:', e);
+    // Send generic error via Twilio and respond
+    const replyMessage = DEFAULT_ERROR_MESSAGE;
+    let messageSent = false;
+    if (accountSid && authToken && whatsappFrom) {
+      const client = require('twilio')(accountSid, authToken);
+      try {
+        await client.messages.create({ from: whatsappFrom, to: from, body: replyMessage });
+        console.log('Fallback reply sent via Twilio API');
+        messageSent = true;
+      } catch (err) {
+        console.error('Failed to send fallback reply via Twilio API', err);
+      }
+    }
+    const twiml = !messageSent ? `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>${replyMessage}</Message>
+</Response>` : "";
+    return new NextResponse(twiml, { status: 200, headers: { 'Content-Type': 'text/xml' } });
+  }
+  let replyMessage: string;
+  switch (classification.intent) {
+    case 'REPORT_FLOOD':
+      replyMessage = 'Thank you for reporting the flood. Our team will investigate the location.';
+      break;
+    case 'REPORT_DAMAGE':
+      replyMessage = 'We have received your damage report and will forward it to the authorities.';
+      break;
+    case 'SHELTER_LOOKUP':
+      replyMessage = 'Here is a list of nearby shelters: ... (mock data)';
+      break;
+    case 'ALERT_INFO':
+      replyMessage = await getAlertInfo(from);
+      break;
+    case 'PREPAREDNESS_HELP':
+      replyMessage = await getPreparednessHelp(body);
+      break;
+    case 'EMERGENCY_CONTACT':
+      replyMessage = 'Emergency Contacts:\n • Disaster Management Centre: 011-2136222\n • Police Emergency Hotline: 119\n\n⚠️ Safety Tip: Keep your phone charged, store important documents in a waterproof bag, and move to higher ground immediately if flooding is reported in your area.';
+      break;
+    case 'GENERAL_QUESTION':
+      replyMessage = 'For more information, please visit our website or contact support.';
+      break;
+    default:
+      replyMessage = 'Thank you for contacting us, stay safe and cautious.\nEmergency Contacts:\n • Disaster Management Centre: 011-2136222\n • Police Emergency Hotline: 119';
+  }
+
+  // Fallback/default message if no intent matched or error occurred earlier
+  if (!replyMessage) {
+    replyMessage = DEFAULT_ERROR_MESSAGE;
+  }
 
   // ----- Send a reply message via Twilio REST API -----
   // Load credentials from environment variables (add them to .env)
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const whatsappFrom = process.env.TWILIO_WHATSAPP_FROM; // e.g. "whatsapp:+14155238886"
+
 
   let messageSent = false;
   if (accountSid && authToken && whatsappFrom) {
-    const { twiml: MessagingResponse } = await import('twilio/lib/twiml/MessagingResponse');
+    // No need for MessagingResponse import; using raw XML response
     const client = require('twilio')(accountSid, authToken);
     try {
       await client.messages.create({
         from: whatsappFrom,
         to: from,
-        // Use the Gemini‑generated reply instead of the static text
-        body: generatedReply,
+        body: replyMessage,
       });
       console.log('Reply sent via Twilio API');
       messageSent = true;
