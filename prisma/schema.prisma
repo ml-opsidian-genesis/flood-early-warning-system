@@ -131,6 +131,24 @@ model OtpCode {
   @@index([phone])
 }
 
+/// Every prediction the ml-model service has made (from /predict or
+/// /predict/batch), written directly by the Python service via a raw
+/// INSERT -- durable across HF Space restarts, queryable via SQL.
+model PredictionLog {
+  id           String   @id @default(cuid())
+  source       String // "predict" | "predict/batch"
+  modelVersion String
+  locationId   String? // present only for /predict/batch calls tied to a real Location
+  input        Json
+  score        Float
+  riskLevel    String
+  confidence   String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([riskLevel])
+}
+
 /// One row per pipeline execution (monitoring / observability).
 model ScoringRun {
   id            String   @id @default(cuid())
