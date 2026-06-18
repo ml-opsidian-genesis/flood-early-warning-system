@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 // Suppress TS error for side-effect CSS import when no declarations are present
 // @ts-ignore
 import "./globals.css";
@@ -65,6 +67,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="mx-auto max-w-7xl px-4 py-4 text-center text-xs text-slate-400">
           FloodGuard · ML Opsidian: Genesis · Flood-risk model + autonomous WhatsApp alerts
         </footer>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
