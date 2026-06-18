@@ -1,8 +1,13 @@
 // Deterministic mock weather/feature generation, mirroring the deleted
 // Python src/mock_features.py from the ml-model repo. Lives on the system
 // side: the model API should only score fully-formed feature vectors, not
-// simulate its own inputs. Swapping this for a real weather API later is a
-// one-function change here, touching zero model code.
+// simulate its own inputs.
+//
+// Individual fields can be swapped for real data (rainfall via Open-Meteo,
+// elevation/river/hospital distance via src/lib/geo.ts) by passing a
+// `real` overrides object to generateFeatures() -- any field left out
+// falls back to the deterministic mock, so a partial or failed fetch
+// degrades gracefully per-field, not all-or-nothing.
 
 function xmur3(str: string): () => number {
   let h = 1779033703 ^ str.length;
@@ -63,6 +68,16 @@ const ELECTRICITY = ["Yes", "Mixed", "No"] as const;
 const ROAD = ["Good (paved)", "Fair", "Poor (unpaved)", "No road access"] as const;
 const REGIMES = ["dry", "normal", "wet", "storm"] as const;
 export type WeatherRegime = (typeof REGIMES)[number];
+
+/** Classify a real or simulated 7-day rainfall total into the same regime
+ *  bands used to generate mock rainfall, so real data and mock data produce
+ *  consistent downstream behavior (NDWI, inundation, flood flags). */
+function regimeFromRainfall(rainfall: number): WeatherRegime {
+  if (rainfall < 40) return "dry";
+  if (rainfall < 95) return "normal";
+  if (rainfall < 165) return "wet";
+  return "storm";
+}
 
 type LocationProfile = {
   district: string;
@@ -147,34 +162,63 @@ export type MockFeaturesResult = {
   weatherRegime: WeatherRegime;
 };
 
-/** Deterministic per-(locationId, date) mock weather + static profile. */
-export function mockFeatures(
+/** Per-field real-data overrides. Any field left undefined falls back to
+ *  the deterministic mock for that field -- a partial or fully-failed
+ *  fetch degrades gracefully, not all-or-nothing. */
+export type RealOverrides = {
+  rainfall_7d_mm?: number;
+  monthly_rainfall_mm?: number;
+  elevation_m?: number;
+  distance_to_river_m?: number;
+  nearest_hospital_km?: number;
+};
+
+/** Deterministic per-(locationId, date) features, with any provided real
+ *  values substituted in place of their mock equivalent. Rainfall drives
+ *  the weather regime and every rainfall-dependent field (NDWI,
+ *  inundation, flood flags); elevation also feeds into inundation/low-lying
+ *  logic, so real values there change the same derived outputs a mock
+ *  value would. */
+export function generateFeatures(
   locationId: string,
   district: string,
   dateISO: string,
+  real: RealOverrides = {},
 ): MockFeaturesResult {
   const prof = locationProfile(locationId, district);
   const rng = seededRng("daily", locationId, dateISO);
 
-  const regime = weightedChoice(rng, REGIMES, [0.22, 0.4, 0.23, 0.15]);
-  const rainfall =
-    regime === "dry" ? uniform(rng, 5, 40)
-    : regime === "normal" ? uniform(rng, 40, 95)
-    : regime === "wet" ? uniform(rng, 95, 165)
-    : uniform(rng, 165, 320);
+  let rainfall: number;
+  let monthlyRainfall: number;
+  if (real.rainfall_7d_mm !== undefined && real.monthly_rainfall_mm !== undefined) {
+    rainfall = real.rainfall_7d_mm;
+    monthlyRainfall = real.monthly_rainfall_mm;
+  } else {
+    const regime = weightedChoice(rng, REGIMES, [0.22, 0.4, 0.23, 0.15]);
+    rainfall =
+      regime === "dry" ? uniform(rng, 5, 40)
+      : regime === "normal" ? uniform(rng, 40, 95)
+      : regime === "wet" ? uniform(rng, 95, 165)
+      : uniform(rng, 165, 320);
+    monthlyRainfall = rainfall * uniform(rng, 2.5, 4.0);
+  }
 
-  const monthlyRainfall = rainfall * uniform(rng, 2.5, 4.0);
+  const elevation = real.elevation_m ?? prof.elevation_m;
+  const distanceToRiver = real.distance_to_river_m ?? prof.distance_to_river_m;
+  const nearestHospital = real.nearest_hospital_km ?? prof.nearest_hospital_km;
+
+  const regime = regimeFromRainfall(rainfall);
   const ndwi = Math.max(-1, Math.min(1, -0.2 + rainfall / 320 + uniform(rng, -0.15, 0.15)));
   const ndvi = Math.max(-1, Math.min(1, prof.ndvi_base + uniform(rng, -0.1, 0.1)));
-  const inundation = Math.max(0, rainfall * uniform(rng, 60, 220) * (1 / (prof.elevation_m + 5)));
-  const lowLying = prof.elevation_m < 25;
+  const inundation = Math.max(0, rainfall * uniform(rng, 60, 220) * (1 / (elevation + 5)));
+  const lowLying = elevation < 25;
   const flooded = rainfall > 150 && (lowLying || prof.drainage_index < 0.4);
 
   const features: MockFeatures = {
     rainfall_7d_mm: Math.round(rainfall * 10) / 10,
     monthly_rainfall_mm: Math.round(monthlyRainfall * 10) / 10,
-    elevation_m: prof.elevation_m,
-    distance_to_river_m: prof.distance_to_river_m,
+    elevation_m: elevation,
+    distance_to_river_m: distanceToRiver,
     drainage_index: prof.drainage_index,
     ndwi: Math.round(ndwi * 1000) / 1000,
     ndvi: Math.round(ndvi * 1000) / 1000,
@@ -194,9 +238,18 @@ export function mockFeatures(
     population_density_per_km2: prof.population_density_per_km2,
     built_up_percent: prof.built_up_percent,
     infrastructure_score: prof.infrastructure_score,
-    nearest_hospital_km: prof.nearest_hospital_km,
+    nearest_hospital_km: nearestHospital,
     nearest_evac_km: prof.nearest_evac_km,
   };
 
   return { features, weatherRegime: regime };
+}
+
+/** Fully-mocked features, no real-data overrides. */
+export function mockFeatures(
+  locationId: string,
+  district: string,
+  dateISO: string,
+): MockFeaturesResult {
+  return generateFeatures(locationId, district, dateISO);
 }
