@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
+import type { ReactNode } from "react";
+import { Skeleton } from "antd";
 import { runNowAction } from "@/app/actions";
 import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
 
@@ -32,7 +34,7 @@ type Stats = {
 
 const LEVELS: RiskLevel[] = ["Low", "Moderate", "High", "Critical"];
 
-function Card({ label, value }: { label: string; value: string | number }) {
+function Card({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="card p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
@@ -47,11 +49,13 @@ export default function DashboardClient() {
   const [pending, startTransition] = useTransition();
 
   const load = useCallback(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then(setStats)
-      .catch(() => setStats(null));
-  }, []);
+    startTransition(() => {
+      fetch("/api/stats")
+        .then((r) => r.json())
+        .then(setStats)
+        .catch(() => setStats(null));
+    });
+  }, [startTransition]);
 
   useEffect(load, [load]);
 
@@ -98,15 +102,24 @@ export default function DashboardClient() {
         <div className="card border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">{message}</div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card label="Verified subscribers" value={stats?.subscribers ?? "—"} />
-        <Card label="Active subscriptions" value={stats?.subscriptions ?? "—"} />
-        <Card label="Alerts delivered" value={stats?.alertsSent ?? "—"} />
-        <Card
-          label="Last run"
-          value={stats?.lastRun ? new Date(stats.lastRun.createdAt).toLocaleString() : "Never"}
-        />
-      </div>
+      {!stats ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Card label="Verified subscribers" value={<Skeleton active paragraph={false} />} />
+          <Card label="Active subscriptions" value={<Skeleton active paragraph={false} />} />
+          <Card label="Alerts delivered" value={<Skeleton active paragraph={false} />} />
+          <Card label="Last run" value={<Skeleton active paragraph={false} />} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Card label="Verified subscribers" value={stats?.subscribers ?? "—"} />
+          <Card label="Active subscriptions" value={stats?.subscriptions ?? "—"} />
+          <Card label="Alerts delivered" value={stats?.alertsSent ?? "—"} />
+          <Card
+            label="Last run"
+            value={stats?.lastRun ? new Date(stats.lastRun.createdAt).toLocaleString() : "Never"}
+          />
+        </div>
+      )}
 
       {/* Risk distribution */}
       <div className="card p-5">
@@ -114,26 +127,28 @@ export default function DashboardClient() {
           Latest risk distribution {totalScored > 0 && `(${totalScored} locations)`}
         </h2>
         {totalScored === 0 ? (
-          <p className="text-sm text-slate-400">No scores yet — run the pipeline.</p>
+          <Skeleton active paragraph={{ rows: 1 }} />
         ) : (
-          <div className="space-y-2">
-            {LEVELS.map((level) => {
-              const n = stats?.distribution[level] ?? 0;
-              const pct = totalScored ? (n / totalScored) * 100 : 0;
-              return (
-                <div key={level} className="flex items-center gap-3 text-sm">
-                  <span className="w-20 text-slate-600">{level}</span>
-                  <div className="h-3 flex-1 overflow-hidden rounded bg-slate-100">
-                    <div
-                      className="h-full rounded"
-                      style={{ width: `${pct}%`, backgroundColor: RISK_COLORS[level] }}
-                    />
+          <Skeleton active paragraph={false} title={false}>
+            <div className="space-y-2">
+              {LEVELS.map((level) => {
+                const n = stats?.distribution[level] ?? 0;
+                const pct = totalScored ? (n / totalScored) * 100 : 0;
+                return (
+                  <div key={level} className="flex items-center gap-3 text-sm">
+                    <span className="w-20 text-slate-600">{level}</span>
+                    <div className="h-3 flex-1 overflow-hidden rounded bg-slate-100">
+                      <div
+                        className="h-full rounded"
+                        style={{ width: `${pct}%`, backgroundColor: RISK_COLORS[level] }}
+                      />
+                    </div>
+                    <span className="w-8 text-right tabular-nums text-slate-500">{n}</span>
                   </div>
-                  <span className="w-8 text-right tabular-nums text-slate-500">{n}</span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </Skeleton>
         )}
       </div>
 
@@ -141,7 +156,7 @@ export default function DashboardClient() {
       <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold">Recent alerts</h2>
         {!stats || stats.recentAlerts.length === 0 ? (
-          <p className="text-sm text-slate-400">No alerts sent yet.</p>
+          <Skeleton active paragraph={{ rows: 1 }} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

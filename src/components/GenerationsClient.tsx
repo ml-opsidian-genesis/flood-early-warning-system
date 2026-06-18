@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RISK_COLORS, type RiskLevel } from "@/lib/risk";
 import Pagination from "./Pagination";
+import LoadingSpinner from "./LoadingSpinner";
+import CardSkeleton from "./customComponents/CardSkeleton";
 
 type Generation = {
   date: string;
@@ -63,6 +65,7 @@ export default function GenerationsClient() {
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [loadingGens, setLoadingGens] = useState(false);
 
   // Generations list filter/pagination
   const [genSearch, setGenSearch] = useState("");
@@ -77,13 +80,15 @@ export default function GenerationsClient() {
   const [fbPage, setFbPage] = useState(1);
 
   useEffect(() => {
+    setLoadingGens(true);
     fetch("/api/admin/generations")
       .then((r) => r.json())
       .then((d) => {
         setGenerations(d.generations ?? []);
         if (d.generations?.[0]) setSelected(d.generations[0].date);
       })
-      .catch(() => setGenerations([]));
+      .catch(() => setGenerations([]))
+      .finally(() => setLoadingGens(false));
   }, []);
 
   const loadDetail = useCallback((date: string) => {
@@ -158,10 +163,9 @@ export default function GenerationsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Pipeline generations &amp; feedback</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Predictions &amp; feedback</h1>
         <p className="text-sm text-slate-500">
-          Every morning generation, its predicted scores, and the ground-truth feedback collected —
-          your retraining dataset.
+          Every morning prediction scores, and the ground-truth feedback collected.
         </p>
       </div>
 
@@ -171,7 +175,7 @@ export default function GenerationsClient() {
           <input
             value={genSearch}
             onChange={(e) => handleGenSearch(e.target.value)}
-            placeholder="Search by date or model…"
+            placeholder="Search by date"
             className="min-w-[200px] rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500"
           />
           {genSearch && (
@@ -197,12 +201,18 @@ export default function GenerationsClient() {
                 <th>Avg score</th>
                 <th>High-risk</th>
                 <th>Alerts</th>
-                <th>Feedback</th>
+                <th>Feedbacks</th>
                 <th>Model</th>
               </tr>
             </thead>
             <tbody>
-              {genPageRows.length === 0 ? (
+              {loadingGens ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center">
+                    <LoadingSpinner size="large" />
+                  </td>
+                </tr>
+              ) : genPageRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
                     {generations.length === 0
@@ -215,9 +225,8 @@ export default function GenerationsClient() {
                   <tr
                     key={g.date}
                     onClick={() => setSelected(g.date)}
-                    className={`cursor-pointer border-t border-slate-100 ${
-                      selected === g.date ? "bg-blue-50" : "hover:bg-slate-50"
-                    }`}
+                    className={`cursor-pointer border-t border-slate-100 ${selected === g.date ? "bg-blue-50" : "hover:bg-slate-50"
+                      }`}
                   >
                     <td className="px-4 py-2 font-medium">
                       {new Date(g.scoredFor).toLocaleDateString()}
@@ -256,7 +265,7 @@ export default function GenerationsClient() {
           {detail && (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <Stat label="Feedback" value={detail.summary.total} />
+                <Stat label="Feedbacks" value={detail.summary.total} />
                 <Stat label="Flooded: yes" value={detail.summary.floodedYes} />
                 <Stat label="Flooded: no" value={detail.summary.floodedNo} />
                 <Stat label="Accurate" value={detail.summary.accurate} />
@@ -305,11 +314,17 @@ export default function GenerationsClient() {
                         <th>Score</th>
                         <th>Level</th>
                         <th>Regime</th>
-                        <th>Feedback</th>
+                        <th>Feedbacks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {scorePageRows.length === 0 ? (
+                      {loadingDetail ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center">
+                            <LoadingSpinner size="large" />
+                          </td>
+                        </tr>
+                      ) : scorePageRows.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
                             No scores match the filters.
