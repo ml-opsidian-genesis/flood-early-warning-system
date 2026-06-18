@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PrismaClient } from "@prisma/client";
-import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo, getMainMenu } from "./classifier";
+import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo, getMainMenu, getGeneralQuestionResponse } from "./classifier";
 
 /**
  * Twilio webhook for incoming WhatsApp messages.
@@ -103,7 +103,10 @@ export async function POST(req: NextRequest) {
       replyMessage = 'Emergency Contacts:\n • Disaster Management Centre: 011-2136222\n • Police Emergency Hotline: 119\n\n⚠️ Safety Tip: Keep your phone charged, store important documents in a waterproof bag, and move to higher ground immediately if flooding is reported in your area.';
       break;
     case 'GENERAL_QUESTION':
-      replyMessage = 'You can ask flood‑related questions.\n• Official info: https://flood-early-warning-system.vercel.app/\n• Emergency contacts: Disaster Management Centre 011-2136222, Police 119.';
+      replyMessage = await getGeneralQuestionResponse(body);
+      break;
+    case 'CANNOT_REACH_SERVICES':
+      replyMessage = DEFAULT_ERROR_MESSAGE;
       break;
     default:
       // If intent is unknown or not matched, send interactive main menu
@@ -119,7 +122,7 @@ export async function POST(req: NextRequest) {
   // ----- Send a reply message via Twilio REST API -----
   // Load credentials from environment variables (add them to .env)
 
-
+  console.log("REPLY MSG IS : ", replyMessage)
   let messageSent = false;
   if (accountSid && authToken && whatsappFrom) {
     // No need for MessagingResponse import; using raw XML response

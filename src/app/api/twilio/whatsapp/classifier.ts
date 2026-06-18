@@ -3,11 +3,12 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-export const COMMON_PREPAREDNESS_RULES = `Provide concise advice (max 120 words). Do NOT give health‑related instructions, medical advice, or evacuation plans. Include a suggestion to contact emergency services at 119, Disaster Management Centre: 011-2136222 and provide other official contact info at the end of the response. Always try to refactor and keep instructions pointwise and concise to support Whatsapp messages. Use single "*" to bold text, and never use "**".`;
+const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+export const COMMON_BASE_RULES = `Provide concise advice (max 120 words). Do NOT give health‑related instructions, medical advice, or evacuation plans. Include a suggestion to contact emergency services at 119, Disaster Management Centre: 011-2136222 and provide other official contact info at the end of the response. Always try to refactor and keep instructions pointwise and concise to support Whatsapp messages. Use single "*" to bold text, and never use "**". For pointwise sentences, use "- sentence" (equivalent to bulletpoint sentences, dont use "•" symbol) before everyline to render them as points in whatsapp.`;
+export const GENERAL_SYSTEM_RELATED_INFO = "We are a research based flood early warning system developed by UCSC undegrads and the system adheres with GDPR and PDPA privacy and ethics guidelines. Messages may storeed encrypted for context retaininig purposes, but not be stored for processing or commercial use, or sold to third parties. We strip personally identifiable data from messages while we encourage to not share them, and any data stored, will only be used to track the conversation context for better User Experience.";
 
 // Shared fallback message for unexpected Gemini errors
-export const DEFAULT_ERROR_MESSAGE = 'Sorry, we are experiencing technical difficulties. Please try again later.';
+export const DEFAULT_ERROR_MESSAGE = 'Sorry, we are experiencing technical difficulties. Please try again later.\n\n- You can reach emergency services at 119\n- Disaster Management Centre at 011-2136222';
 
 /**
  * Convert plain text into a bullet‑point list suitable for WhatsApp.
@@ -36,7 +37,8 @@ export type Intent =
   | 'GENERAL_QUESTION'
   | 'MAIN_MENU'
   | 'UNKNOWN'
-  | 'REPORT_FEEDBACK';
+  | 'REPORT_FEEDBACK'
+  | 'CANNOT_REACH_SERVICES';
 
 export interface ClassifiedMessage {
   intent: Intent;
@@ -47,7 +49,7 @@ export interface ClassifiedMessage {
 
 export async function classifyMessage(message: string): Promise<ClassifiedMessage> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: modelName });
     const prompt = `You are an emergency message classifier for a flood alert system in Sri Lanka.
 Analyze the user message and return ONLY a JSON object with no markdown, no explanation.
 
@@ -58,7 +60,7 @@ Possible intents:
 - ALERT_INFO: User wants current flood alert information
 - PREPAREDNESS_HELP: User wants flood preparedness advice
 - EMERGENCY_CONTACT: User wants emergency contact numbers
-- GENERAL_QUESTION: General flood-related question
+- GENERAL_QUESTION: General flood-related questions and service and data related (operational and model related) questions (like where is the data collected from, how do you predict, do you store my data, etc.) 
 - MAIN_MENU: User wants to see the main menu options
 - UNKNOWN: Cannot determine intent
 - REPORT_FEEDBACK: User is reporting feedback for the predicted risk scores given
@@ -76,15 +78,15 @@ Return format:
   } catch (error) {
     console.error('Message classification failed:', error);
     // If the model fails to classify, default to MAIN_MENU
-    return { intent: 'MAIN_MENU' };
+    return { intent: 'CANNOT_REACH_SERVICES' };
   }
 }
 
 
 export async function getPreparednessHelp(userMessage: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const prompt = `You are a flood preparedness assistant for Sri Lanka. Using official guidance from the Department of Meteorology (https://www.dmc.gov.lk/index.php?lang=en) and other national emergency systems, provide concise, general preparedness advice in response to the user's request. ${COMMON_PREPAREDNESS_RULES}\\nUser request: \"${userMessage}\"`;
+    const model = genAI.getGenerativeModel({ model: modelName });
+    const prompt = `You are a flood preparedness assistant for Sri Lanka. Using official guidance from the Department of Meteorology (https://www.dmc.gov.lk/index.php?lang=en) and other national emergency systems, provide concise, general preparedness advice in response to the user's request. ${COMMON_BASE_RULES}\\nUser request: \"${userMessage}\"`;
     const result = await model.generateContent(prompt);
     const raw = (await result.response?.text())?.trim() ?? '';
     // Limit to max 120 words
@@ -94,7 +96,7 @@ export async function getPreparednessHelp(userMessage: string): Promise<string> 
     return formatted;
   } catch (e) {
     console.error('Preparedness help generation failed:', e);
-    return 'Stay safe, avoid flood‑affected areas, and follow official instructions. Call 119 for emergency assistance.';
+    return DEFAULT_ERROR_MESSAGE;
   }
 
 }
@@ -157,3 +159,23 @@ export function getMainMenu(): string {
 Just tell me, and I will do my best to provide you with the information you need.`;
 }
 
+
+/**
+ * Handle a generic flood‑related question.
+ * Returns a concise, point‑wise answer that references official resources and emergency contacts.
+ * No health or evacuation advice is provided.
+ */
+export async function getGeneralQuestionResponse(userMessage: string): Promise<string> {
+  try {
+    const prompt = `You are a flood early‑warning assistant for Sri Lanka. Answer the user's flood‑related question in a concise, surface‑level manner. Do NOT give health advice, medical instructions, or evacuation plans. Include the official website and refer to https://flood-early-warning-system.vercel.app/ answer and emergency contacts: Disaster Management Centre 011-2136222, Police 119. ${COMMON_BASE_RULES}\nUser question: "${userMessage}"\n system related info : "${GENERAL_SYSTEM_RELATED_INFO}"`;
+    const model = genAI.getGenerativeModel({ model: modelName });
+    const result = await model.generateContent(prompt);
+    const raw = (await result.response?.text())?.trim() ?? '';
+    // Limit to 120 words as per COMMON_BASE_RULES
+    const limited = raw.split(/\s+/).slice(0, 120).join(' ');
+    return formatPointwise(limited);
+  } catch (e) {
+    console.error('General question handling failed:', e);
+    return DEFAULT_ERROR_MESSAGE;
+  }
+}
