@@ -3,11 +3,11 @@
 // side: the model API should only score fully-formed feature vectors, not
 // simulate its own inputs.
 //
-// Rainfall can be swapped for real data from Open-Meteo (see src/lib/weather.ts)
-// -- buildFeaturesFromRainfall() takes a real rainfall reading and derives the
-// rest (regime, NDWI, inundation, flood flags) from it exactly the same way
-// mockFeatures() does from a simulated one, so callers fall back seamlessly
-// when the live fetch is unavailable.
+// Individual fields can be swapped for real data (rainfall via Open-Meteo,
+// elevation/river/hospital distance via src/lib/geo.ts) by passing a
+// `real` overrides object to generateFeatures() -- any field left out
+// falls back to the deterministic mock, so a partial or failed fetch
+// degrades gracefully per-field, not all-or-nothing.
 
 function xmur3(str: string): () => number {
   let h = 1779033703 ^ str.length;
@@ -162,29 +162,63 @@ export type MockFeaturesResult = {
   weatherRegime: WeatherRegime;
 };
 
-/** Shared core: given a (real or simulated) rainfall reading, derive every
- *  rainfall-dependent field the same way regardless of where the rainfall
- *  came from. The seeded `rng` only drives the parts we have no live source
- *  for (NDVI/inundation noise) -- it never overrides the rainfall itself. */
-function buildFeatures(
-  prof: LocationProfile,
-  rng: () => number,
-  rainfall: number,
-  monthlyRainfall: number,
+/** Per-field real-data overrides. Any field left undefined falls back to
+ *  the deterministic mock for that field -- a partial or fully-failed
+ *  fetch degrades gracefully, not all-or-nothing. */
+export type RealOverrides = {
+  rainfall_7d_mm?: number;
+  monthly_rainfall_mm?: number;
+  elevation_m?: number;
+  distance_to_river_m?: number;
+  nearest_hospital_km?: number;
+};
+
+/** Deterministic per-(locationId, date) features, with any provided real
+ *  values substituted in place of their mock equivalent. Rainfall drives
+ *  the weather regime and every rainfall-dependent field (NDWI,
+ *  inundation, flood flags); elevation also feeds into inundation/low-lying
+ *  logic, so real values there change the same derived outputs a mock
+ *  value would. */
+export function generateFeatures(
+  locationId: string,
+  district: string,
   dateISO: string,
+  real: RealOverrides = {},
 ): MockFeaturesResult {
+  const prof = locationProfile(locationId, district);
+  const rng = seededRng("daily", locationId, dateISO);
+
+  let rainfall: number;
+  let monthlyRainfall: number;
+  if (real.rainfall_7d_mm !== undefined && real.monthly_rainfall_mm !== undefined) {
+    rainfall = real.rainfall_7d_mm;
+    monthlyRainfall = real.monthly_rainfall_mm;
+  } else {
+    const regime = weightedChoice(rng, REGIMES, [0.22, 0.4, 0.23, 0.15]);
+    rainfall =
+      regime === "dry" ? uniform(rng, 5, 40)
+      : regime === "normal" ? uniform(rng, 40, 95)
+      : regime === "wet" ? uniform(rng, 95, 165)
+      : uniform(rng, 165, 320);
+    monthlyRainfall = rainfall * uniform(rng, 2.5, 4.0);
+  }
+
+  const elevation = real.elevation_m ?? prof.elevation_m;
+  const distanceToRiver = real.distance_to_river_m ?? prof.distance_to_river_m;
+  const nearestHospital = real.nearest_hospital_km ?? prof.nearest_hospital_km;
+
   const regime = regimeFromRainfall(rainfall);
   const ndwi = Math.max(-1, Math.min(1, -0.2 + rainfall / 320 + uniform(rng, -0.15, 0.15)));
   const ndvi = Math.max(-1, Math.min(1, prof.ndvi_base + uniform(rng, -0.1, 0.1)));
-  const inundation = Math.max(0, rainfall * uniform(rng, 60, 220) * (1 / (prof.elevation_m + 5)));
-  const lowLying = prof.elevation_m < 25;
+  const inundation = Math.max(0, rainfall * uniform(rng, 60, 220) * (1 / (elevation + 5)));
+  const lowLying = elevation < 25;
   const flooded = rainfall > 150 && (lowLying || prof.drainage_index < 0.4);
 
   const features: MockFeatures = {
     rainfall_7d_mm: Math.round(rainfall * 10) / 10,
     monthly_rainfall_mm: Math.round(monthlyRainfall * 10) / 10,
-    elevation_m: prof.elevation_m,
-    distance_to_river_m: prof.distance_to_river_m,
+    elevation_m: elevation,
+    distance_to_river_m: distanceToRiver,
     drainage_index: prof.drainage_index,
     ndwi: Math.round(ndwi * 1000) / 1000,
     ndvi: Math.round(ndvi * 1000) / 1000,
@@ -204,44 +238,18 @@ function buildFeatures(
     population_density_per_km2: prof.population_density_per_km2,
     built_up_percent: prof.built_up_percent,
     infrastructure_score: prof.infrastructure_score,
-    nearest_hospital_km: prof.nearest_hospital_km,
+    nearest_hospital_km: nearestHospital,
     nearest_evac_km: prof.nearest_evac_km,
   };
 
   return { features, weatherRegime: regime };
 }
 
-/** Deterministic per-(locationId, date) mock weather + static profile. */
+/** Fully-mocked features, no real-data overrides. */
 export function mockFeatures(
   locationId: string,
   district: string,
   dateISO: string,
 ): MockFeaturesResult {
-  const prof = locationProfile(locationId, district);
-  const rng = seededRng("daily", locationId, dateISO);
-
-  const regime = weightedChoice(rng, REGIMES, [0.22, 0.4, 0.23, 0.15]);
-  const rainfall =
-    regime === "dry" ? uniform(rng, 5, 40)
-    : regime === "normal" ? uniform(rng, 40, 95)
-    : regime === "wet" ? uniform(rng, 95, 165)
-    : uniform(rng, 165, 320);
-  const monthlyRainfall = rainfall * uniform(rng, 2.5, 4.0);
-
-  return buildFeatures(prof, rng, rainfall, monthlyRainfall, dateISO);
-}
-
-/** Same as mockFeatures(), but using a real rainfall reading (e.g. from
- *  Open-Meteo) instead of a simulated one -- everything else (terrain,
- *  demographics, NDVI/inundation noise) stays the same deterministic mock. */
-export function buildFeaturesFromRainfall(
-  locationId: string,
-  district: string,
-  dateISO: string,
-  rainfall7d: number,
-  monthlyRainfall: number,
-): MockFeaturesResult {
-  const prof = locationProfile(locationId, district);
-  const rng = seededRng("daily", locationId, dateISO);
-  return buildFeatures(prof, rng, rainfall7d, monthlyRainfall, dateISO);
+  return generateFeatures(locationId, district, dateISO);
 }
