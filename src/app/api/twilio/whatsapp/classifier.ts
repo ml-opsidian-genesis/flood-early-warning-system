@@ -1,5 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export const COMMON_PREPAREDNESS_RULES = `Provide concise advice (max 120 words). Do NOT give health‑related instructions, medical advice, or evacuation plans. Include a suggestion to contact emergency services at 119, Disaster Management Centre: 011-2136222 and provide other official contact info at the end of the response. Always try to refactor and keep instructions pointwise and concise to support Whatsapp messages. Use single "*" to bold text, and never use "**".`;
@@ -32,7 +34,9 @@ export type Intent =
   | 'PREPAREDNESS_HELP'
   | 'EMERGENCY_CONTACT'
   | 'GENERAL_QUESTION'
-  | 'UNKNOWN';
+  | 'MAIN_MENU'
+  | 'UNKNOWN'
+  | 'REPORT_FEEDBACK';
 
 export interface ClassifiedMessage {
   intent: Intent;
@@ -55,7 +59,9 @@ Possible intents:
 - PREPAREDNESS_HELP: User wants flood preparedness advice
 - EMERGENCY_CONTACT: User wants emergency contact numbers
 - GENERAL_QUESTION: General flood-related question
+- MAIN_MENU: User wants to see the main menu options
 - UNKNOWN: Cannot determine intent
+- REPORT_FEEDBACK: User is reporting feedback for the predicted risk scores given
 
 Return format:
 {"intent": "INTENT_HERE", "severity": "low|medium|high|unknown", "location": "extracted location or null", "report_type": "flood|damage|null"}
@@ -64,8 +70,13 @@ Return format:
     const text = (await result.response?.text())?.trim() ?? '';
     const clean = text.replace(/```json|```/g, '').trim();
     return JSON.parse(clean) as ClassifiedMessage;
+    // If the model fails to classify, default to MAIN_MENU
+    // return { intent: 'MAIN_MENU' };
+
   } catch (error) {
-    return { intent: 'UNKNOWN' };
+    console.error('Message classification failed:', error);
+    // If the model fails to classify, default to MAIN_MENU
+    return { intent: 'MAIN_MENU' };
   }
 }
 
@@ -89,11 +100,6 @@ export async function getPreparednessHelp(userMessage: string): Promise<string> 
 }
 
 
-
-// Prisma client for database access
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
 
 /**
  * Retrieve alert information for a subscriber based on their WhatsApp number.
@@ -122,11 +128,11 @@ export async function getAlertInfo(whatsappNumber: string): Promise<string> {
         if (!forecastDate) {
           forecastDate = latestScore.scoredFor.toISOString().split("T")[0];
         }
-        lines.push(`• ${loc.name} (${loc.district}): Score ${latestScore.score.toFixed(2)} (${latestScore.riskLevel})`);
+        lines.push(`• ${loc.name} (${loc.district}): Risk of flooding is ${(latestScore.score * 100).toFixed(1)}% (${latestScore.riskLevel})`);
       }
     }
     if (forecastDate) {
-      lines.unshift(`Forecast for ${forecastDate}:\n\n`);
+      lines.unshift(`Forecast for ${forecastDate}:\n`);
     }
     if (lines.length === 0) {
       return "No recent risk scores available. Visit https://flood-early-warning-system.vercel.app/ for the latest map.";
@@ -137,5 +143,17 @@ export async function getAlertInfo(whatsappNumber: string): Promise<string> {
     console.error("Alert info retrieval failed:", e);
     return DEFAULT_ERROR_MESSAGE;
   }
+}
+// Returns a simple text menu for WhatsApp interactions
+export function getMainMenu(): string {
+  return `Here are the things you can do with the Flood Early Warning System assistant:
+
+• View Flood Risk – get the latest forecast for your subscribed locations
+• Emergency Contacts – quick numbers for disaster assistance
+• Submit Feedback – share your thoughts on the risk scores
+• Safety Tips – general flood‑safety guidance
+• General Question – ask any flood‑related query
+
+Just tell me, and I will do my best to provide you with the information you need.`;
 }
 

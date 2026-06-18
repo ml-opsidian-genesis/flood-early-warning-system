@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PrismaClient } from "@prisma/client";
-import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo } from "./classifier";
+import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo, getMainMenu } from "./classifier";
 
 /**
  * Twilio webhook for incoming WhatsApp messages.
@@ -84,11 +84,11 @@ export async function POST(req: NextRequest) {
     case 'REPORT_FLOOD':
       replyMessage = 'Thank you for reporting the flood. Our team will investigate the location.';
       break;
-    case 'REPORT_DAMAGE':
+    case 'REPORT_FEEDBACK':
       replyMessage = 'We have received your damage report and will forward it to the authorities.';
       break;
     case 'SHELTER_LOOKUP':
-      replyMessage = 'Here is a list of nearby shelters: ... (mock data)';
+      replyMessage = 'Sorry, no rescue shelters are added to the system yet.';
       break;
     case 'ALERT_INFO':
       replyMessage = await getAlertInfo(from);
@@ -96,14 +96,19 @@ export async function POST(req: NextRequest) {
     case 'PREPAREDNESS_HELP':
       replyMessage = await getPreparednessHelp(body);
       break;
+    case 'MAIN_MENU':
+      replyMessage = getMainMenu();
+      break;
     case 'EMERGENCY_CONTACT':
       replyMessage = 'Emergency Contacts:\n • Disaster Management Centre: 011-2136222\n • Police Emergency Hotline: 119\n\n⚠️ Safety Tip: Keep your phone charged, store important documents in a waterproof bag, and move to higher ground immediately if flooding is reported in your area.';
       break;
     case 'GENERAL_QUESTION':
-      replyMessage = 'For more information, please visit our website or contact support.';
+      replyMessage = 'You can ask flood‑related questions.\n• Official info: https://flood-early-warning-system.vercel.app/\n• Emergency contacts: Disaster Management Centre 011-2136222, Police 119.';
       break;
     default:
-      replyMessage = 'Thank you for contacting us, stay safe and cautious.\nEmergency Contacts:\n • Disaster Management Centre: 011-2136222\n • Police Emergency Hotline: 119';
+      // If intent is unknown or not matched, send interactive main menu
+      replyMessage = getMainMenu();
+      break;
   }
 
   // Fallback/default message if no intent matched or error occurred earlier
