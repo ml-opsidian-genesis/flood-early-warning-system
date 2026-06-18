@@ -47,10 +47,10 @@ export interface ClassifiedMessage {
   report_type?: string;
 }
 
-export async function classifyMessage(message: string): Promise<ClassifiedMessage> {
+export async function classifyMessage(message: string, historyContext?: string): Promise<ClassifiedMessage> {
   try {
     const model = genAI.getGenerativeModel({ model: modelName });
-    const prompt = `You are an emergency message classifier for a flood alert system in Sri Lanka.
+    let prompt = `You are an emergency message classifier for a flood alert system in Sri Lanka.
 Analyze the user message and return ONLY a JSON object with no markdown, no explanation.
 
 Possible intents:
@@ -63,11 +63,16 @@ Possible intents:
 - GENERAL_QUESTION: General flood-related questions and service and data related (operational and model related) questions (like where is the data collected from, how do you predict, do you store my data, etc.) 
 - MAIN_MENU: User wants to see the main menu options
 - UNKNOWN: Cannot determine intent
-- REPORT_FEEDBACK: User is reporting feedback for the predicted risk scores given
+- REPORT_FEEDBACK: User is providing feedback on a flood risk prediction
 
 Return format:
 {"intent": "INTENT_HERE", "severity": "low|medium|high|unknown", "location": "extracted location or null", "report_type": "flood|damage|null"}
-\nUser message: "${message}"`;
+`;
+
+    if (historyContext) {
+      prompt += `\nRecent conversation history for context:\n${historyContext}\n`;
+    }
+    prompt += `\nUser message: "${message}"`;
     const result = await model.generateContent(prompt);
     const text = (await result.response?.text())?.trim() ?? '';
     const clean = text.replace(/```json|```/g, '').trim();

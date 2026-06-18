@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PrismaClient } from "@prisma/client";
 import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo, getMainMenu, getGeneralQuestionResponse } from "./classifier";
+import { getLastThread } from "../../../../lib/threadManager";
+import { handleFeedbackThread } from "../../../../lib/feedbackHandler";
 
 /**
  * Twilio webhook for incoming WhatsApp messages.
@@ -32,6 +34,16 @@ export async function POST(req: NextRequest) {
 
   console.log(`Message from ${from}: ${body}`);
 
+  const phone = from.replace(/^whatsapp:/, "");
+
+  // 1. Check for active message thread
+  const activeThread = await getLastThread(phone);
+  let historyContext = "";
+  if (activeThread && activeThread.messages) {
+    const msgs = activeThread.messages as any as {role: string, content: string}[];
+    historyContext = msgs.map(m => `${m.role}: ${m.content}`).join("\n");
+  }
+
   // --------------------------------------------------------------
   // 1️⃣ Generate a smart reply using Gemini AI
   // --------------------------------------------------------------
@@ -57,7 +69,7 @@ export async function POST(req: NextRequest) {
   // Classify the incoming message to determine intent
   let classification: ClassifiedMessage;
   try {
-    classification = await classifyMessage(body);
+    classification = await classifyMessage(body, historyContext);
   } catch (e) {
     console.error('Classification failed:', e);
     // Send generic error via Twilio and respond
@@ -85,7 +97,7 @@ export async function POST(req: NextRequest) {
       replyMessage = 'Thank you for reporting the flood. Our team will investigate the location.';
       break;
     case 'REPORT_FEEDBACK':
-      replyMessage = 'We have received your damage report and will forward it to the authorities.';
+      replyMessage = await handleFeedbackThread(phone, body, activeThread);
       break;
     case 'SHELTER_LOOKUP':
       replyMessage = 'Sorry, no rescue shelters are added to the system yet.';

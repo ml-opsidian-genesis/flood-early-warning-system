@@ -88,6 +88,7 @@ model Subscriber {
 
   subscriptions Subscription[]
   alerts        Alert[]
+  userFeedbacks UserFeedback[]
 }
 
 /// Links a verified subscriber to a location they want alerts for.
@@ -144,4 +145,30 @@ model ScoringRun {
   createdAt     DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model MessageThread {
+  id            String     @id @default(cuid())
+  phoneNumber   String
+  intent        String
+  messages      Json
+  tobeContinued Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  userFeedback  UserFeedback?
+}
+
+model UserFeedback {
+  id              String        @id @default(cuid())
+  subscriberPhone String
+  subscriber      Subscriber    @relation(fields: [subscriberPhone], references: [phone])
+  location        String
+  predictedRisk   String?
+  actualSituation String?
+  feedbackType    String?
+  comment         String?
+  threadSnapshot  Json
+  threadId        String        @unique
+  thread          MessageThread @relation(fields: [threadId], references: [id])
+  createdAt       DateTime      @default(now())
 }
