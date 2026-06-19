@@ -20,6 +20,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "5.18.0",
+    "@sentry/nextjs": "^10.58.0",
     "antd": "^6.4.4",
     "dotenv": "^17.4.2",
     "env": "^0.0.2",
