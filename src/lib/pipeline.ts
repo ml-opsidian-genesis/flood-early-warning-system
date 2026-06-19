@@ -16,7 +16,7 @@ export type PipelineSummary = {
 
 function alertMessage(name: string, district: string, level: string, score: number): string {
   return (
-    `🚨 *FloodGuard Alert*\n\n` +
+    `🚨 *Pravaha Alert*\n\n` +
     `${name}, ${district} is at *${level}* flood risk today ` +
     `(score ${score.toFixed(2)}).\n\n` +
     `Please stay alert, avoid low-lying areas near rivers, and follow local ` +
@@ -24,7 +24,7 @@ function alertMessage(name: string, district: string, level: string, score: numb
   );
 }
 
-/** The FloodGuard morning pipeline: score all locations, persist, alert subscribers. */
+/** The Pravaha morning pipeline: score all locations, persist, alert subscribers. */
 export async function runScoringPipeline(): Promise<PipelineSummary> {
   const dateISO = new Date().toISOString().slice(0, 10);
   const scoredFor = new Date(`${dateISO}T00:00:00.000Z`);

@@ -37,7 +37,7 @@ export async function evaluateThread(
 }> {
   try {
     const model = genAI.getGenerativeModel({ model: modelName });
-    
+
     const formattedMessages = threadMessages
       .map(m => `${m.role}: ${m.content}`)
       .join('\n');
@@ -100,9 +100,9 @@ export async function handleFeedbackThread(
   activeThread: MessageThread | null
 ): Promise<string> {
   const subscribedLocations = await getUserSubscribedLocations(subscriberPhone);
-  
+
   const threadMessages = activeThread ? (activeThread.messages as any as ThreadMessage[]) : [];
-  
+
   const result = await evaluateThread(
     threadMessages,
     incomingMessage,
@@ -124,24 +124,24 @@ export async function handleFeedbackThread(
 
   if (!activeThread) {
     const newThread = await createThread(
-      subscriberPhone, 
-      'REPORT_FEEDBACK', 
-      incomingMessage, 
+      subscriberPhone,
+      'REPORT_FEEDBACK',
+      incomingMessage,
       "✅ Thank you for your feedback! It has been recorded and will help improve our predictions.\n\n"
     );
     threadId = newThread.id;
   } else {
     // Append the last successful user message and bot reply so the snapshot is complete
     await appendMessages(
-      threadId!, 
-      incomingMessage, 
+      threadId!,
+      incomingMessage,
       "✅ Thank you for your feedback! It has been recorded and will help improve our predictions.\n\n"
     );
   }
 
   // Reload the thread to get the full snapshot for saving
   const finalizedThread = await prisma.messageThread.findUnique({ where: { id: threadId! } });
-  
+
   if (result.extractedData) {
     await prisma.userFeedback.create({
       data: {

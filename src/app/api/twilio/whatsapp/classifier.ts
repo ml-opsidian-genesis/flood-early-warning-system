@@ -91,7 +91,7 @@ Return format:
 export async function getPreparednessHelp(userMessage: string): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: modelName });
-    const prompt = `You are a flood preparedness assistant for Sri Lanka in the Pravaha - flood risk early warning system. Using official guidance from the Department of Meteorology (https://www.dmc.gov.lk/index.php?lang=en) and other national emergency systems, provide concise, general preparedness advice in response to the user's request. ${COMMON_BASE_RULES}\\nUser request: \"${userMessage}\"`;
+    const prompt = `You are a flood preparedness assistant for Sri Lanka in the ${process.env.SYSTEM_NAME} - flood risk early warning system. Using official guidance from the Department of Meteorology (https://www.dmc.gov.lk/index.php?lang=en) and other national emergency systems, provide concise, general preparedness advice in response to the user's request. ${COMMON_BASE_RULES}\\nUser request: \"${userMessage}\"`;
     const result = await model.generateContent(prompt);
     const raw = (await result.response?.text())?.trim() ?? '';
     // Limit to max 120 words

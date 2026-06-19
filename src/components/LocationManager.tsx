@@ -249,7 +249,7 @@ export default function LocationManager() {
           <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-1 text-lg font-semibold">Add a monitored location</h3>
             <p className="mb-4 text-sm text-slate-500">
-              Coordinates must be within Sri Lanka. New places are scored on the next pipeline run.
+              Coordinates must be within Sri Lanka. New places are scored on the next flood risk prediction.
             </p>
             <form onSubmit={addLocation} className="flex flex-col gap-3">
               <label className="flex flex-col gap-1 text-sm">

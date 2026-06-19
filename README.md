@@ -1,6 +1,6 @@
-# 🌊 FloodGuard — Autonomous Flood Early-Warning System
+# 🌊 Pravaha — Autonomous Flood-risk Early-Warning System
 
-FloodGuard turns the ML Opsidian flood-risk model into a real product. Every
+Pravaha turns the ML Opsidian flood-risk model into a real product. Every
 morning a scheduled pipeline scores a fixed set of Sri Lankan locations, stores
 the results, paints them on a public risk map, and sends **WhatsApp alerts** to
 subscribers whenever a place they follow crosses the high-risk threshold.
@@ -56,7 +56,7 @@ Verify: `http://127.0.0.1:8000/docs` → try `POST /predict/batch`.
 ## 2. Configure the web app
 
 ```bash
-cd floodguard
+cd pravaha
 cp .env.example .env        # then fill in the values
 npm install
 ```
@@ -103,7 +103,7 @@ curl -X POST http://localhost:3000/api/cron/score -H "x-cron-secret: <CRON_SECRE
 `ML_SERVICE_URL` to its public URL.
 
 **Web app** → Vercel:
-1. Import the repo, root directory `floodguard`.
+1. Import the repo, root directory `pravaha`.
 2. Add all `.env` variables in Vercel project settings.
 3. `vercel.json` registers the daily cron (`0 1 * * *` UTC ≈ 06:30 Sri Lanka).
 4. Set `CRON_SECRET` so Vercel signs cron requests automatically.
