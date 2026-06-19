@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { classifyMessage, getPreparednessHelp, formatPointwise, DEFAULT_ERROR_MESSAGE, ClassifiedMessage, getAlertInfo, getMainMenu, getGeneralQuestionResponse } from "./classifier";
 import { getLastThread } from "../../../../lib/threadManager";
 import { handleFeedbackThread } from "../../../../lib/feedbackHandler";
+import { handleShelterThread } from '@/lib/shelterLookup';
 
 /**
  * Twilio webhook for incoming WhatsApp messages.
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
   const activeThread = await getLastThread(phone);
   let historyContext = "";
   if (activeThread && activeThread.messages) {
-    const msgs = activeThread.messages as any as {role: string, content: string}[];
+    const msgs = activeThread.messages as any as { role: string, content: string }[];
     historyContext = msgs.map(m => `${m.role}: ${m.content}`).join("\n");
   }
 
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       replyMessage = await handleFeedbackThread(phone, body, activeThread);
       break;
     case 'SHELTER_LOOKUP':
-      replyMessage = 'Sorry, no rescue shelters are added to the system yet.';
+      replyMessage = await handleShelterThread(phone, body, activeThread);
       break;
     case 'ALERT_INFO':
       replyMessage = await getAlertInfo(from);

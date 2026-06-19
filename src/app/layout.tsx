@@ -6,9 +6,9 @@ import { getAdminSession } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "FloodGuard — Flood Early-Warning System",
+  title: "Pravaha — Flood Early-Warning System",
   description:
-    "Autonomous flood-risk early-warning for Sri Lanka. Daily ML scoring with WhatsApp alerts.",
+    "Autonomous flood-risk early-warning for Sri Lanka. Daily flood risk scoring with WhatsApp alerts.",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
