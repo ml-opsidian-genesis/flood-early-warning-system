@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import LoadingSpinner from "./LoadingSpinner";
+
+const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
+  ssr: false,
+  loading: () => <div className="h-full bg-slate-100 flex items-center justify-center text-slate-400 text-sm animate-pulse rounded-lg">Loading map...</div>,
+});
 
 type Shelter = {
   id: string;
@@ -297,6 +303,17 @@ export default function RescueSheltersClient() {
                   onChange={(e) => setEditing({ ...editing, longitude: parseFloat(e.target.value) })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500"
                 />
+              </div>
+
+              <div className="col-span-2 mb-2">
+                <label className="mb-1 block text-sm font-medium text-slate-700">Map location (click to drop pin)</label>
+                <div className="h-[250px] w-full rounded-lg overflow-hidden border border-slate-300">
+                  <LocationPickerMap
+                    lat={editing.latitude}
+                    lng={editing.longitude}
+                    onChange={(lat, lng) => setEditing({ ...editing, latitude: lat, longitude: lng })}
+                  />
+                </div>
               </div>
 
               <div>
