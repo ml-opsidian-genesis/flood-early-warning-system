@@ -16,11 +16,10 @@ export default function Navbar({ session }: { session: any }) {
 
   const getLinkClass = (path: string) => {
     const isActive = pathname === path;
-    return `block md:inline-block px-3 py-2 rounded-md transition-colors text-sm font-medium ${
-      isActive 
-        ? "bg-blue-50 text-blue-700" 
-        : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
-    }`;
+    return `block md:inline-block px-3 py-2 rounded-md transition-colors text-sm font-medium ${isActive
+      ? "bg-blue-50 text-blue-700"
+      : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
+      }`;
   };
 
   return (
@@ -29,12 +28,12 @@ export default function Navbar({ session }: { session: any }) {
         <Link href="/" className="flex items-center gap-2 font-bold text-slate-900 z-50">
           <span className="text-xl">🌊</span>
           <span>
-            Flood<span className="text-blue-600">Guard</span>
+            Pravaha<span className="text-blue-600"></span>
           </span>
         </Link>
-        
+
         {/* Mobile menu button */}
-        <button 
+        <button
           onClick={() => setIsOpen(!isOpen)}
           className="md:hidden p-2 -mr-2 text-slate-600 hover:text-blue-600 z-50 focus:outline-none"
           aria-label="Toggle navigation menu"
@@ -60,7 +59,7 @@ export default function Navbar({ session }: { session: any }) {
           <Link href="/" className={getLinkClass("/")}>
             Risk Map
           </Link>
-          
+
           {session ? (
             <>
               <Link href="/dashboard" className={getLinkClass("/dashboard")}>
@@ -84,14 +83,14 @@ export default function Navbar({ session }: { session: any }) {
               <Link href="/settings" className={getLinkClass("/settings")}>
                 Settings
               </Link>
-              
+
               <div className="mt-4 pt-4 border-t border-slate-100 md:hidden flex flex-col gap-3">
                 <span className="text-xs text-slate-500 font-medium px-3">{session.email}</span>
                 <div className="px-3">
                   <LogoutButton />
                 </div>
               </div>
-              
+
               <div className="hidden md:flex md:items-center md:gap-4 md:ml-4">
                 <span className="text-xs text-slate-400">{session.email}</span>
                 <LogoutButton />
