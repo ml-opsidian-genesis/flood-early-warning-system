@@ -72,6 +72,9 @@ export default function Navbar({ session }: { session: any }) {
               <Link href="/subscribers" className={getLinkClass("/subscribers")}>
                 Subscribers
               </Link>
+              <Link href="/rescue-shelters" className={getLinkClass("/rescue-shelters")}>
+                Rescue Shelters
+              </Link>
               <Link href="/alerts" className={getLinkClass("/alerts")}>
                 Alerts
               </Link>
