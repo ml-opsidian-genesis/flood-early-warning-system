@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import SubscribePanel from "./SubscribePanel";
 import RiskLegend from "./RiskLegend";
-import type { LocationScore } from "./types";
+import type { LocationScore, Shelter } from "./types";
 import type { DistrictAgg, MapView } from "./FloodMap";
 import type { Thresholds } from "@/lib/risk";
 
@@ -31,6 +31,7 @@ export default function Landing() {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [view, setView] = useState<MapView>("none");
+  const [shelters, setShelters] = useState<Shelter[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -52,6 +53,11 @@ export default function Landing() {
       .then((r) => r.json())
       .then(setGeojson)
       .catch(() => setGeojson(null));
+
+    fetch("/api/rescue-shelters")
+      .then((r) => r.json())
+      .then((d) => setShelters(d.shelters ?? []))
+      .catch(() => setShelters([]));
   }, []);
 
   const toggle = useCallback((id: string) => {
@@ -108,6 +114,7 @@ export default function Landing() {
               thresholds={thresholds}
               districts={districts}
               geojson={geojson}
+              shelters={shelters}
             />
           </div>
           <RiskLegend thresholds={thresholds} />
