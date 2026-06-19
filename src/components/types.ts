@@ -7,6 +7,7 @@ export type LocationScore = {
   score: number | null;
   riskLevel: string | null;
   weatherRegime: string | null;
+  scoredFor: any;
 };
 
 export type Shelter = {
