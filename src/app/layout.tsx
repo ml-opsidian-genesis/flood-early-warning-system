@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 // Suppress TS error for side-effect CSS import when no declarations are present
 // @ts-ignore
 import "./globals.css";
 import { getAdminSession } from "@/lib/auth";
-import LogoutButton from "@/components/LogoutButton";
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "FloodGuard — Flood Early-Warning System",
@@ -18,52 +17,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body>
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 font-bold text-slate-900">
-              <span className="text-xl">🌊</span>
-              <span>
-                Flood<span className="text-blue-600">Guard</span>
-              </span>
-            </Link>
-            <nav className="flex items-center gap-5 text-sm font-medium text-slate-600">
-              <Link href="/" className="hover:text-blue-600">
-                Risk Map
-              </Link>
-              {session ? (
-                <>
-                  <Link href="/dashboard" className="hover:text-blue-600">
-                    Ops Dashboard
-                  </Link>
-                  <Link href="/locations" className="hover:text-blue-600">
-                    Locations
-                  </Link>
-                  <Link href="/subscribers" className="hover:text-blue-600">
-                    Subscribers
-                  </Link>
-                  <Link href="/alerts" className="hover:text-blue-600">
-                    Alerts
-                  </Link>
-                  <Link href="/generations" className="hover:text-blue-600">
-                    Generations
-                  </Link>
-                  <Link href="/settings" className="hover:text-blue-600">
-                    Settings
-                  </Link>
-                  <span className="hidden text-xs text-slate-400 sm:inline">{session.email}</span>
-                  <LogoutButton />
-                </>
-              ) : (
-                <Link href="/login" className="hover:text-blue-600">
-                  Admin
-                </Link>
-              )}
-            </nav>
-          </div>
-        </header>
+        <Navbar session={session} />
         <main className="mx-auto max-w-7xl px-4 pt-6 pb-4">{children}</main>
         <footer className="mx-auto max-w-7xl px-4 py-4 text-center text-xs text-slate-400">
-          FloodGuard · ML Opsidian: Genesis · Flood-risk model + autonomous WhatsApp alerts
+          Pravaha · Early Flood-risk Warning System
         </footer>
       </body>
     </html>

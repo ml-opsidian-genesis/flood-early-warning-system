@@ -53,7 +53,11 @@ export default function FeedbackForm({ location }: { location: LocationScore }) 
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
         className="mt-1 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
       >
         Give feedback
@@ -62,12 +66,14 @@ export default function FeedbackForm({ location }: { location: LocationScore }) 
   }
 
   const pill = (active: boolean) =>
-    `rounded px-1.5 py-0.5 text-[11px] font-medium border ${
-      active ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 text-slate-600"
+    `rounded px-1.5 py-0.5 text-[11px] font-medium border ${active ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 text-slate-600"
     }`;
 
   return (
-    <div className="mt-2 space-y-2 border-t border-slate-100 pt-2">
+    <div
+      className="mt-2 space-y-2 border-t border-slate-100 pt-2"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div>
         <div className="mb-1 text-[11px] font-semibold text-slate-600">Did flooding actually occur?</div>
         <div className="flex gap-1">
