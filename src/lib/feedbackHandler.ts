@@ -1,6 +1,7 @@
 import { PrismaClient, Subscriber, MessageThread } from '@prisma/client';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ThreadMessage, appendMessages, createThread, closeThread } from './threadManager';
+import { decrypt } from './cryptoUtil';
 
 const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -101,8 +102,9 @@ export async function handleFeedbackThread(
 ): Promise<string> {
   const subscribedLocations = await getUserSubscribedLocations(subscriberPhone);
 
-  const threadMessages = activeThread ? (activeThread.messages as any as ThreadMessage[]) : [];
+  const threadMessages = activeThread ? (activeThread.messages as any as ThreadMessage[]).map(m => ({ role: m.role, content: decrypt(m.content), timestamp: m.timestamp })) : [];
 
+  console.log("threadMessages: ", threadMessages);
   const result = await evaluateThread(
     threadMessages,
     incomingMessage,
