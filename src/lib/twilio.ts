@@ -57,7 +57,7 @@ export async function startVerification(phone: string): Promise<{ simulated: boo
 
   const result = await sendWhatsApp(
     phone,
-    `Your FloodGuard verification code is: *${code}*\n\nThis code expires in 10 minutes. Do not share it with anyone.`,
+    `Your Pravaha verification code is: *${code}*\n\nThis code expires in 10 minutes. Do not share it with anyone.`,
   );
 
   if (result.status === "failed") {

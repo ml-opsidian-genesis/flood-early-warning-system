@@ -47,7 +47,7 @@ async function main() {
     const msg = await client.messages.create({
       from: TWILIO_WHATSAPP_FROM,
       to: `whatsapp:${to}`,
-      body: "✅ FloodGuard test alert — your Twilio WhatsApp integration works!",
+      body: "✅ Pravaha test alert — your Twilio WhatsApp integration works!",
     });
     console.log(`Sent. SID=${msg.sid} status=${msg.status}`);
   } catch (e: any) {

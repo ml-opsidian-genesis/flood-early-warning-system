@@ -7,5 +7,18 @@ export type LocationScore = {
   score: number | null;
   riskLevel: string | null;
   weatherRegime: string | null;
-  scoredFor: string | null;
+  scoredFor: any;
+};
+
+export type Shelter = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  capacity: number | null;
+  facilities: string[];
+  contactInfo: string | null;
+  description: string | null;
+  status: string;
 };

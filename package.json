@@ -1,8 +1,8 @@
 {
-  "name": "floodguard",
+  "name": "pravaha",
   "version": "1.0.0",
   "private": true,
-  "description": "FloodGuard — autonomous flood early-warning system (Next.js front-end for the ML Opsidian flood-risk model)",
+  "description": "Pravaha — autonomous flood-risk early-warning system (Next.js front-end for the ML Opsidian flood-risk model)",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

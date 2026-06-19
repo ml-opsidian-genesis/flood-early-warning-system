@@ -9,7 +9,7 @@ export async function sendSubscriptionConfirmation(
 ): Promise<void> {
   let body: string;
   if (locationIds.length === 0) {
-    body = "🔕 *FloodGuard*\n\nYou've been unsubscribed from all flood-risk alerts.";
+    body = "🔕 *Pravaha*\n\nYou've been unsubscribed from all flood-risk alerts.";
   } else {
     const locs = await prisma.location.findMany({
       where: { id: { in: locationIds } },
@@ -18,9 +18,9 @@ export async function sendSubscriptionConfirmation(
     });
     const list = locs.map((l) => `• ${l.name}, ${l.district}`).join("\n");
     body =
-      "✅ *FloodGuard — subscription confirmed*\n\n" +
+      "✅ *Pravaha — subscription confirmed*\n\n" +
       `You'll receive flood-risk alerts for:\n${list}\n\n` +
-      "You can edit or unsubscribe anytime from the FloodGuard site.";
+      "You can edit or unsubscribe anytime from the Pravaha site.";
   }
 
   try {

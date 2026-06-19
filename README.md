@@ -1,6 +1,6 @@
-# 🌊 FloodGuard — Autonomous Flood Early-Warning System
+# 🌊 Pravaha — Autonomous Flood-risk Early-Warning System
 
-FloodGuard turns the ML Opsidian flood-risk model into a real product. Every
+Pravaha turns the ML Opsidian flood-risk model into a real product. Every
 morning a scheduled pipeline scores a fixed set of Sri Lankan locations using
 **real weather and terrain data**, stores the results, paints them on a public
 risk map, and sends **WhatsApp alerts** to subscribers whenever a place they
@@ -122,6 +122,8 @@ Verify: `http://127.0.0.1:8000/docs` → try `POST /predict/batch`.
 ## 2. Configure the web app
 
 ```bash
+cd pravaha
+cp .env.example .env        # then fill in the values
 npm install
 ```
 

@@ -91,7 +91,7 @@ Return format:
 export async function getPreparednessHelp(userMessage: string): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: modelName });
-    const prompt = `You are a flood preparedness assistant for Sri Lanka. Using official guidance from the Department of Meteorology (https://www.dmc.gov.lk/index.php?lang=en) and other national emergency systems, provide concise, general preparedness advice in response to the user's request. ${COMMON_BASE_RULES}\\nUser request: \"${userMessage}\"`;
+    const prompt = `You are a flood preparedness assistant for Sri Lanka in the ${process.env.SYSTEM_NAME} - flood risk early warning system. Using official guidance from the Department of Meteorology (https://www.dmc.gov.lk/index.php?lang=en) and other national emergency systems, provide concise, general preparedness advice in response to the user's request. ${COMMON_BASE_RULES}\\nUser request: \"${userMessage}\"`;
     const result = await model.generateContent(prompt);
     const raw = (await result.response?.text())?.trim() ?? '';
     // Limit to max 120 words
@@ -157,9 +157,10 @@ export function getMainMenu(): string {
 
 • View Flood Risk – get the latest forecast for your subscribed locations
 • Emergency Contacts – quick numbers for disaster assistance
-• Submit Feedback – share your thoughts on the risk scores
+• Rescue shelters – find nearby rescue shelters
 • Safety Tips – general flood‑safety guidance
 • General Question – ask any flood‑related query
+• Submit Feedback – share your thoughts on the risk scores
 
 Just tell me, and I will do my best to provide you with the information you need.`;
 }
@@ -172,7 +173,7 @@ Just tell me, and I will do my best to provide you with the information you need
  */
 export async function getGeneralQuestionResponse(userMessage: string): Promise<string> {
   try {
-    const prompt = `You are a flood early‑warning assistant for Sri Lanka. Answer the user's flood‑related question in a concise, surface‑level manner. Do NOT give health advice, medical instructions, or evacuation plans. Include the official website and refer to https://flood-early-warning-system.vercel.app/ answer and emergency contacts: Disaster Management Centre 011-2136222, Police 119. ${COMMON_BASE_RULES}\nUser question: "${userMessage}"\n system related info : "${GENERAL_SYSTEM_RELATED_INFO}"`;
+    const prompt = `You are a flood early‑warning assistant for Sri Lanka called ${process.env.SYSTEM_NAME}. Answer the user's flood‑related question in a concise, surface‑level manner. Do NOT give health advice, medical instructions, or evacuation plans. Include the official website and refer to https://flood-early-warning-system.vercel.app/ answer and emergency contacts: Disaster Management Centre 011-2136222, Police 119. ${COMMON_BASE_RULES}\nUser question: "${userMessage}"\n system related info : "${GENERAL_SYSTEM_RELATED_INFO}"`;
     const model = genAI.getGenerativeModel({ model: modelName });
     const result = await model.generateContent(prompt);
     const raw = (await result.response?.text())?.trim() ?? '';
