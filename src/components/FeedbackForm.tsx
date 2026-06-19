@@ -62,8 +62,7 @@ export default function FeedbackForm({ location }: { location: LocationScore }) 
   }
 
   const pill = (active: boolean) =>
-    `rounded px-1.5 py-0.5 text-[11px] font-medium border ${
-      active ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 text-slate-600"
+    `rounded px-1.5 py-0.5 text-[11px] font-medium border ${active ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 text-slate-600"
     }`;
 
   return (

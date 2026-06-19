@@ -155,6 +155,7 @@ export default function FloodMap({
         return (
           <CircleMarker
             key={loc.id}
+            pane="markerPane"
             center={[loc.latitude, loc.longitude]}
             radius={selected ? 13 : 8}
             pathOptions={{
@@ -179,11 +180,11 @@ export default function FloodMap({
                     Risk: <b style={{ color }}>{loc.riskLevel}</b> ({(loc.score as number).toFixed(4)})
                   </div>
                 ) : (
-                  <div className="text-slate-500">Not scored yet — run the pipeline.</div>
+                  <div className="text-slate-500">No risk predictions given.</div>
                 )}
                 <button
                   onClick={() => onToggle(loc.id)}
-                  className="mt-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                  className="mt-1 mr-2 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
                 >
                   {selected ? "Remove from selection" : "Select for alerts"}
                 </button>
