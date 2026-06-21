@@ -32,6 +32,9 @@ into an optional retraining loop, and both services are monitored end to end
 ## Try It Live.
 
 **🔗 [flood-early-warning-system.vercel.app](https://flood-early-warning-system.vercel.app/)**
+Admin Credentials : 
+- email : admin@gmail.com  
+- password : admin123
 
 1. Open the deployed app above and look at the risk map — scores update daily
    from live weather data (see [Real data sources](#real-data-sources) below).
